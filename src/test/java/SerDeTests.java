@@ -21,7 +21,10 @@ public class SerDeTests {
         assertEquals(-7, bytes[0]);
         assertEquals(66, bytes[1]);
         assertEquals(72, bytes[2]);
-        assertEquals(val, Cbor.decode(ByteBuffer.wrap(bytes), serde));
+        var buf = ByteBuffer.wrap(bytes);
+        var decodedVal = Cbor.decode(buf, serde);
+        assertEquals(0, buf.remaining());
+        assertEquals(val, decodedVal);
         assertEquals(Float.float16ToFloat(val), Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.HALF_TO_FLOAT));
         assertEquals(Float.float16ToFloat(val), Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.MOST_FLOAT));
         assertEquals(Float.float16ToFloat(val), Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.MOST_DOUBLE));
@@ -38,7 +41,10 @@ public class SerDeTests {
         assertEquals(73, bytes[2]);
         assertEquals(15, bytes[3]);
         assertEquals(-37, bytes[4]);
-        assertEquals(val, Cbor.decode(ByteBuffer.wrap(bytes), serde));
+        var buf = ByteBuffer.wrap(bytes);
+        var decodedVal = Cbor.decode(buf, serde);
+        assertEquals(0, buf.remaining());
+        assertEquals(val, decodedVal);
         assertEquals((float) Math.PI, Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.MOST_FLOAT));
         assertEquals((float) Math.PI, Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.MOST_DOUBLE));
     }
@@ -58,7 +64,10 @@ public class SerDeTests {
         assertEquals(68, bytes[6]);
         assertEquals(45, bytes[7]);
         assertEquals(24, bytes[8]);
-        assertEquals(val, Cbor.decode(ByteBuffer.wrap(bytes), serde));
+        var buf = ByteBuffer.wrap(bytes);
+        var decodedVal = Cbor.decode(buf, serde);
+        assertEquals(0, buf.remaining());
+        assertEquals(val, decodedVal);
         assertEquals(Math.PI, Cbor.decode(ByteBuffer.wrap(bytes), CborPrim.MOST_DOUBLE));
     }
 
@@ -87,6 +96,7 @@ public class SerDeTests {
                         Collectors.mapDowncast(HashMap::new),
                         CborPrim.STRING, CborPrim.UNSIGNED)
                 );
+        assertEquals(0, buf.remaining());
         assertEquals(data.entrySet(), dec.entrySet());
     }
 
@@ -107,6 +117,7 @@ public class SerDeTests {
                         Collectors.hashSet(),
                         CborPrim.STRING)
         );
+        assertEquals(0, buf.remaining());
         assertEquals(data, dec);
     }
 }

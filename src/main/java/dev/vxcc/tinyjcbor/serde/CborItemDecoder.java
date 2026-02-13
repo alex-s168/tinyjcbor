@@ -8,13 +8,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-@FunctionalInterface
-public interface CborItemDecoder<T> {
-    /**
-     * This method gets called AFTER [CborDecoder#nextToken] has been called!
-     */
-    T next(@NotNull CborDecoder decoder) throws UnexpectedCborException;
-
+    @FunctionalInterface
+    public interface CborItemDecoder<T> {
+        T next(@NotNull CborDecoder decoder) throws UnexpectedCborException;
     default boolean mightAccept(@NotNull CborType type) {
         return true;
     }
@@ -47,7 +43,6 @@ public interface CborItemDecoder<T> {
             @Override
             public R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
                 var a = parent.next(decoder);
-                decoder.nextToken();
                 var b = other.next(decoder);
                 return then.apply(a, b);
             }

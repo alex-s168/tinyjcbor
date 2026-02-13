@@ -31,6 +31,7 @@ public class DecodeTests {
 
         var item = new CborFixedTagDecoder<>(4, new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.SIGNED));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(2, x.size());
         assertEquals(-2, x.get(0));
         assertEquals(27315, x.get(1));
@@ -53,6 +54,7 @@ public class DecodeTests {
         buf.flip();
 
         var x = Cbor.decode(buf, CborPrim.BYTE_ARRAY);
+        assertEquals(0, buf.remaining());
         assertEquals(7, x.length);
         assertEquals((byte) 0xaa, x[0]);
         assertEquals((byte) 0xbb, x[1]);
@@ -81,6 +83,7 @@ public class DecodeTests {
                 new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(3, x.size());
         assertEquals(1, (long) (Long) x.get(0));
         var arr1 = assertInstanceOf(ArrayList.class, x.get(1));
@@ -112,6 +115,7 @@ public class DecodeTests {
                 new LessInfoDecoder<>(new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED))
         )));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(3, x.size());
         assertEquals(1, (long) (Long) x.get(0));
         var arr1 = assertInstanceOf(ArrayList.class, x.get(1));
@@ -144,6 +148,7 @@ public class DecodeTests {
                 new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(3, x.size());
         assertEquals(1, (long) (Long) x.get(0));
         var arr1 = assertInstanceOf(ArrayList.class, x.get(1));
@@ -175,6 +180,7 @@ public class DecodeTests {
                 new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(3, x.size());
         assertEquals(1, (long) (Long) x.get(0));
         var arr1 = assertInstanceOf(ArrayList.class, x.get(1));
@@ -212,6 +218,7 @@ public class DecodeTests {
                     CborPrim.BOOL
                 )));
         var x = Cbor.decode(buf, item);
+        assertEquals(0, buf.remaining());
         assertEquals(2, x.size());
         assertTrue((Boolean) x.get("Fun"));
         assertEquals(-2, (long) (Long) x.get("Amt"));
@@ -234,6 +241,7 @@ public class DecodeTests {
         assertTrue(seq.hasNext());
         assertEquals(4, seq.next(item));
         assertFalse(seq.hasNext());
+        assertEquals(0, buf.remaining());
     }
 
     @Test
@@ -248,6 +256,7 @@ public class DecodeTests {
         assertTrue(seq.hasNext());
         assertEquals(2 + 3, seq.next(item));
         assertFalse(seq.hasNext());
+        assertEquals(0, buf.remaining());
     }
 
     @Test
@@ -261,5 +270,6 @@ public class DecodeTests {
         assertTrue(seq.hasNext());
         assertEquals(2, seq.next(item));
         assertFalse(seq.hasNext());
+        assertEquals(0, buf.remaining());
     }
 }

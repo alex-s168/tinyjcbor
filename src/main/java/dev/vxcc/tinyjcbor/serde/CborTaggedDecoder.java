@@ -17,9 +17,8 @@ public abstract class CborTaggedDecoder<I, O> extends CborPrim.PrimitiveDecoder<
 
     @Override
     public final O next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        var tag = decoder.getTag();
+        var tag = decoder.readTag();
         var x = item.next(decoder);
-        decoder.nextToken();
         return process(tag, x);
     }
 

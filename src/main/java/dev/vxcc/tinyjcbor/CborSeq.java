@@ -24,7 +24,6 @@ public class CborSeq {
         snapshot.from(decoder);
         T parsed;
         try {
-            decoder.nextToken();
             parsed = item.next(decoder);
         } catch (Throwable e) {
             decoder.reset(snapshot);

@@ -42,7 +42,7 @@ public final class CborPrim {
     {
         @Override
         public Boolean next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getBool();
+            return decoder.readBool();
         }
     }, CborEncoder::writeBool);
 
@@ -52,7 +52,7 @@ public final class CborPrim {
     {
         @Override
         public Long next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getInt();
+            return decoder.readInt();
         }
     }, CborEncoder::writeSigned);
 
@@ -62,7 +62,7 @@ public final class CborPrim {
     {
         @Override
         public Long next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getUInt();
+            return decoder.readUInt();
         }
     }, CborEncoder::writeUnsigned);
 
@@ -72,7 +72,7 @@ public final class CborPrim {
     {
         @Override
         public @Nullable Void next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            decoder.getNull();
+            decoder.readNull();
             return null;
         }
     }, (out, x) -> out.writeNull());
@@ -83,7 +83,7 @@ public final class CborPrim {
     {
         @Override
         public @Nullable Void next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            decoder.getUndefined();
+            decoder.readUndefined();
             return null;
         }
     }, (out, x) -> out.writeUndefined());
@@ -94,7 +94,7 @@ public final class CborPrim {
     {
         @Override
         public Short next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getFloat16();
+            return decoder.readFloat16();
         }
     }, CborEncoder::writeFloat16);
 
@@ -104,7 +104,7 @@ public final class CborPrim {
     {
         @Override
         public Float next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return Float.float16ToFloat(decoder.getFloat16());
+            return Float.float16ToFloat(decoder.readFloat16());
         }
     }, (out, x) -> out.writeFloat16(Float.floatToFloat16(x)));
 
@@ -114,7 +114,7 @@ public final class CborPrim {
     {
         @Override
         public Float next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getFloat32();
+            return decoder.readFloat32();
         }
     }, CborEncoder::writeFloat32);
 
@@ -124,7 +124,7 @@ public final class CborPrim {
     {
         @Override
         public Double next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.getFloat64();
+            return decoder.readFloat64();
         }
     }, CborEncoder::writeFloat64);
 
@@ -133,11 +133,11 @@ public final class CborPrim {
             new PrimitiveDecoder<@NotNull Float>(new CborType[]{ CborType.Float16, CborType.Float32 })
     {
         @Override
-        public Float next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            var type = decoder.tokenType();
+        public Float next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
+            var type = decoder.peekTokenType();
             return switch (type) {
-                case Float16 -> Float.float16ToFloat(decoder.getFloat16());
-                case Float32 -> decoder.getFloat32();
+                case Float16 -> Float.float16ToFloat(decoder.readFloat16());
+                case Float32 -> decoder.readFloat32();
                 default -> throw new UnexpectedCborException.UnexpectedType(CborType.Float16.name() + " or " + CborType.Float32.name(), type);
             };
         }
@@ -148,12 +148,12 @@ public final class CborPrim {
             new PrimitiveDecoder<@NotNull Double>(new CborType[]{ CborType.Float16, CborType.Float32, CborType.Float32 })
     {
         @Override
-        public Double next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            var type = decoder.tokenType();
+        public Double next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
+            var type = decoder.peekTokenType();
             return switch (type) {
-                case Float16 -> (double) Float.float16ToFloat(decoder.getFloat16());
-                case Float32 -> (double) decoder.getFloat32();
-                case Float64 -> decoder.getFloat64();
+                case Float16 -> (double) Float.float16ToFloat(decoder.readFloat16());
+                case Float32 -> (double) decoder.readFloat32();
+                case Float64 -> decoder.readFloat64();
                 default -> throw new UnexpectedCborException.UnexpectedType(CborType.Float16.name() + " or " + CborType.Float32.name() + " or " + CborType.Float64.name(), type);
             };
         }

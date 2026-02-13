@@ -19,10 +19,9 @@ public final class CborFixedTagDecoder<T> extends CborPrim.PrimitiveDecoder<T> {
 
     @Override
     public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        var x = decoder.getTag();
+        var x = decoder.readTag();
         if (x != tag)
             throw new UnexpectedCborException.WrongTag(tag, x);
-        decoder.nextToken();
         return item.next(decoder);
     }
 }

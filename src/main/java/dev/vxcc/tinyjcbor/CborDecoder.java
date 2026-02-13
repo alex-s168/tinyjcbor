@@ -54,7 +54,7 @@ public final class CborDecoder {
         return buffer.hasRemaining();
     }
 
-    public void nextToken() throws InvalidCborException {
+    private void nextToken() throws InvalidCborException {
         byte firstByte = buffer.get();
         tokenMajorType = (firstByte & 0b11100000) >> 5;
         tokenAdditionalInfo = firstByte & 0b11111;
@@ -90,8 +90,7 @@ public final class CborDecoder {
         }
     }
 
-    /** returns the type of the current token (after a call to [nextToken]) */
-    public @NotNull CborType tokenType() {
+    private @NotNull CborType currentTokenType() {
         return switch (tokenMajorType) {
             case 0 -> CborType.UnsignedInteger;
             case 1 -> CborType.NegativeInteger;
@@ -118,115 +117,116 @@ public final class CborDecoder {
         };
     }
 
-    /**
-     * this should always follow a call to [nextToken]
-     * @throws UnexpectedCborException if the current token is not an indefinite length Break
-     */
-    public void getBreak() throws UnexpectedCborException {
-        if (tokenMajorType != 7 || tokenAdditionalInfo != 31)
-            throw new UnexpectedCborException.UnexpectedType(CborType.SimpleValue.name(), tokenType());
+    @NotNull
+    private final Snapshot peekSnapshot = new Snapshot();
+
+    /** returns the type of the next token, without reading it */
+    public @Nullable CborType peekTokenType() throws InvalidCborException {
+        if (!hasNext())
+            return null;
+        peekSnapshot.from(this);
+        nextToken();
+        var ty = currentTokenType();
+        reset(peekSnapshot);
+        return ty;
     }
 
-    /**
-     * this should always follow a call to [nextToken]
-     * @return true, if the current token is not an indefinite length Break
-     */
-    public boolean isBreak()  {
-        return tokenMajorType == 7 && tokenAdditionalInfo == 31;
-    }
-
-    /** this should always follow a call to [nextToken] */
-    public byte getSimple() throws UnexpectedCborException {
+    public byte readSimple() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24)
-            throw new UnexpectedCborException.UnexpectedType(CborType.SimpleValue.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.SimpleValue.name(), currentTokenType());
         return (byte) tokenArg;
     }
 
-    /** this should always follow a call to [nextToken] */
-    public long getUInt() throws UnexpectedCborException {
+    public long readUInt() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 0)
-            throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name(), currentTokenType());
         return tokenArg;
     }
 
-    /** this should always follow a call to [nextToken] */
-    public long getInt() throws UnexpectedCborException {
+    public long readInt() throws UnexpectedCborException {
+        nextToken();
         return switch (tokenMajorType) {
             case 0 -> tokenArg;
             case 1 -> -1 - tokenArg;
             default ->
-                    throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name() + " or " + CborType.NegativeInteger.name(), tokenType());
+                    throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name() + " or " + CborType.NegativeInteger.name(), currentTokenType());
         };
     }
 
-    public short getFloat16() throws UnexpectedCborException {
+    public short readFloat16() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 25)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Float16.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Float16.name(), currentTokenType());
         return (short) tokenArg;
     }
 
-    public float getFloat32() throws UnexpectedCborException {
+    public float readFloat32() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 26)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Float32.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Float32.name(), currentTokenType());
         return Float.intBitsToFloat((int) tokenArg);
     }
 
-    public double getFloat64() throws UnexpectedCborException {
+    public double readFloat64() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 27)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Float64.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Float64.name(), currentTokenType());
         return Double.longBitsToDouble(tokenArg);
     }
 
-    /** this should always follow a call to [nextToken] */
-    public long getTag() throws UnexpectedCborException {
+    public long readTag() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 6)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Tagged.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Tagged.name(), currentTokenType());
         return tokenArg;
     }
 
-    public boolean getBool() throws UnexpectedCborException {
+    public boolean readBool() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24 || !(tokenArg == 20 || tokenArg == 21))
-            throw new UnexpectedCborException.UnexpectedType(CborType.True.name() + " or " + CborType.False.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.True.name() + " or " + CborType.False.name(), currentTokenType());
         return tokenArg == 21;
     }
 
     /**
-     * this should always follow a call to [nextToken]
      * expects simple value = 23
      */
-    public void getUndefined() throws UnexpectedCborException {
+    public void readUndefined() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24 || tokenArg != 23)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), currentTokenType());
     }
 
     /**
-     * this should always follow a call to [nextToken]
      * expects simple value = 22
      */
-    public void getNull() throws UnexpectedCborException {
+    public void readNull() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24 || tokenArg != 22)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), currentTokenType());
     }
 
     /**
-     * this should always follow a call to [nextToken]
      * @return the known length of the array, or [Long.MIN_VALUE] if it's an indefinite length array (terminated by break)
      */
-    public long getArray() throws UnexpectedCborException {
+    public long readArray() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 4)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Array.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Array.name(), currentTokenType());
         if (tokenIndefiniteLength)
             return Long.MIN_VALUE;
         return tokenArg;
     }
 
     /**
-     * this should always follow a call to [nextToken]
      * @return the known number of pairs in the map, or [Long.MIN_VALUE] if it's an indefinite length map (terminated by break)
      */
-    public long getMap() throws UnexpectedCborException {
+    public long readMap() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 5)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Map.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Map.name(), currentTokenType());
         if (tokenIndefiniteLength)
             return Long.MIN_VALUE;
         return tokenArg;
@@ -235,12 +235,10 @@ public final class CborDecoder {
     private final IndefiniteByteArrayReader indefiniteByteArrayReader = new IndefiniteByteArrayReader();
     private final FiniteByteArrayReader finiteByteArrayReader = new FiniteByteArrayReader();
 
-    /**
-     * this should always follow a call to [nextToken]
-     */
     public ByteArrayReader getBytes() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 2)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Bytes.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Bytes.name(), currentTokenType());
         if (tokenIndefiniteLength) {
             indefiniteByteArrayReader.init(2, CborType.Bytes.name());
             return indefiniteByteArrayReader;
@@ -251,12 +249,10 @@ public final class CborDecoder {
 
     private final ByteArrayReaderInputStream byteArrayReaderInputStream = new ByteArrayReaderInputStream();
 
-    /**
-     * this should always follow a call to [nextToken]
-     */
     public Reader getUtf8() throws UnexpectedCborException {
+        nextToken();
         if (tokenMajorType != 3)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Utf8String.name(), tokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Utf8String.name(), currentTokenType());
 
         ByteArrayReader byteReader;
         if (tokenIndefiniteLength) {
@@ -406,24 +402,32 @@ public final class CborDecoder {
         private boolean _hasFinite;
         private int majorType;
         @Nullable private String expectedName;
+        private boolean _end;
 
         public void init(int majorType, @Nullable String expectedName) {
             _hasFinite = false;
             this.majorType = majorType;
             this.expectedName = expectedName;
+            this._end = false;
         }
 
         private @Nullable FiniteByteArrayReader chunkReader() {
+            if (_end)
+                return null;
             if (_hasFinite && finiteByteArrayReader.hasNext())
                 return finiteByteArrayReader;
             _hasFinite = false;
-            if (isBreak())
+
+            if (peekTokenType() == CborType.Break) {
+                nextToken();
+                _end = true;
                 return null;
+            }
+
             nextToken();
-            if (isBreak())
-                return null;
+
             if (tokenMajorType != majorType || tokenIndefiniteLength)
-                throw new UnexpectedCborException.UnexpectedType(expectedName, tokenType());
+                throw new UnexpectedCborException.UnexpectedType(expectedName, currentTokenType());
             finiteByteArrayReader.init(tokenArg);
             _hasFinite = true;
             return finiteByteArrayReader;
@@ -456,12 +460,11 @@ public final class CborDecoder {
      * reads the whole array, including the Break, if indefinite
      */
     public <T> @NotNull Iterator<T> readArray(@NotNull CborItemDecoder<T> elementDecoder) throws UnexpectedCborException {
-        long length = getArray();
+        long length = readArray();
         if (length == Long.MIN_VALUE) {
-            nextToken();
-            return new IndefiniteLengthArrayIterator<>(this, elementDecoder);
+            return new IndefiniteLengthArrayIterator<>(elementDecoder);
         }
-        return new FiniteLengthArrayIterator<>(this, elementDecoder, length);
+        return new FiniteLengthArrayIterator<>(elementDecoder, length);
     }
 
     /**
@@ -471,12 +474,11 @@ public final class CborDecoder {
     public <K, V, T> @NotNull Iterator<T> readMap(@NotNull CborItemDecoder<K> keyDecoder,
                                                   @NotNull CborItemDecoder<V> valDecoder,
                                                   @NotNull BiFunction<K, V, T> makeItem) throws UnexpectedCborException {
-        long length = getMap();
+        long length = readMap();
         if (length == Long.MIN_VALUE) {
-            nextToken();
-            return new IndefiniteLengthMapIterator<>(this, keyDecoder, valDecoder, makeItem);
+            return new IndefiniteLengthMapIterator<>(keyDecoder, valDecoder, makeItem);
         }
-        return new FiniteLengthMapIterator<>(this, keyDecoder, valDecoder, makeItem, length);
+        return new FiniteLengthMapIterator<>(keyDecoder, valDecoder, makeItem, length);
     }
 
     /**
@@ -495,35 +497,37 @@ public final class CborDecoder {
             iter.next();
     }
 
-    private record IndefiniteLengthArrayIterator<T>(@NotNull CborDecoder decoder,
-                                                    @NotNull CborItemDecoder<T> elementDecoder)
-            implements Iterator<T>
-    {
+    private final class IndefiniteLengthArrayIterator<T> implements Iterator<T> {
+        @NotNull private final CborItemDecoder<T> elementDecoder;
+
+        public IndefiniteLengthArrayIterator(@NotNull CborItemDecoder<T> elementDecoder) {
+            this.elementDecoder = elementDecoder;
+        }
+
         @Override
         public boolean hasNext() {
-            return !decoder.isBreak();
+            if (peekTokenType() == CborType.Break) {
+                nextToken();
+                return false;
+            }
+            return true;
         }
 
         @Override
         public T next() {
-            if (decoder.isBreak())
+            if (peekTokenType() == CborType.Break)
                 throw new NoSuchElementException();
-            var x = elementDecoder.next(decoder);
-            decoder.nextToken();
-            return x;
+            return elementDecoder.next(CborDecoder.this);
         }
     }
 
-    private static class FiniteLengthArrayIterator<T> implements Iterator<T>
+    private final class FiniteLengthArrayIterator<T> implements Iterator<T>
     {
-        @NotNull private final CborDecoder decoder;
         @NotNull private final CborItemDecoder<T> elementDecoder;
         private long remaining;
 
-        public FiniteLengthArrayIterator(@NotNull CborDecoder decoder,
-                                         @NotNull CborItemDecoder<T> elementDecoder,
+        public FiniteLengthArrayIterator(@NotNull CborItemDecoder<T> elementDecoder,
                                          long length) {
-            this.decoder = decoder;
             this.elementDecoder = elementDecoder;
             this.remaining = length;
         }
@@ -537,52 +541,60 @@ public final class CborDecoder {
         public T next() {
             if (remaining <= 0)
                 throw new NoSuchElementException();
-            decoder.nextToken();
             remaining -= 1;
-            return elementDecoder.next(decoder);
+            return elementDecoder.next(CborDecoder.this);
         }
     }
 
-    private record IndefiniteLengthMapIterator<K, V, T>(
-            @NotNull CborDecoder decoder,
-            @NotNull CborItemDecoder<K> keyDecoder,
-            @NotNull CborItemDecoder<V> valDecoder,
-            @NotNull BiFunction<K, V, T> makeItem
-    ) implements Iterator<T>
-    {
+    private final class IndefiniteLengthMapIterator<K, V, T> implements Iterator<T> {
+        @NotNull private final CborItemDecoder<K> keyDecoder;
+        @NotNull private final CborItemDecoder<V> valDecoder;
+        @NotNull private final BiFunction<K, V, T> makeItem;
+
+        public IndefiniteLengthMapIterator(@NotNull CborItemDecoder<K> keyDecoder,
+                                           @NotNull CborItemDecoder<V> valDecoder,
+                                           @NotNull BiFunction<K, V, T> makeItem) {
+            this.keyDecoder = keyDecoder;
+            this.valDecoder = valDecoder;
+            this.makeItem = makeItem;
+        }
+
         @Override
         public boolean hasNext() {
-            return !decoder.isBreak();
+            if (peekTokenType() == CborType.Break) {
+                nextToken(); // Consume the break token
+                return false;
+            }
+            return true;
         }
 
         @Override
         public T next() {
-            if (decoder.isBreak())
+            if (peekTokenType() == CborType.Break)
                 throw new NoSuchElementException();
-            K k = keyDecoder.next(decoder);
-            decoder.nextToken();
-            if (decoder.isBreak())
-                throw new InvalidCborException();
-            V v = valDecoder.next(decoder);
-            decoder.nextToken();
+
+            K k = keyDecoder.next(CborDecoder.this);
+            try {
+                if (peekTokenType() == CborType.Break)
+                    throw new InvalidCborException();
+            } catch (InvalidCborException e) {
+                throw new IllegalStateException("CBOR parsing error", e);
+            }
+            V v = valDecoder.next(CborDecoder.this);
             return makeItem.apply(k, v);
         }
     }
 
-    private static class FiniteLengthMapIterator<K, V, T> implements Iterator<T>
-    {
-        @NotNull private final CborDecoder decoder;
+    private final class FiniteLengthMapIterator<K, V, T> implements Iterator<T> {
         @NotNull private final CborItemDecoder<K> keyDecoder;
         @NotNull private final CborItemDecoder<V> valDecoder;
         @NotNull private final BiFunction<K, V, T> makeItem;
         private long remaining;
 
-        public FiniteLengthMapIterator(@NotNull CborDecoder decoder,
-                                       @NotNull CborItemDecoder<K> keyDecoder,
+        public FiniteLengthMapIterator(@NotNull CborItemDecoder<K> keyDecoder,
                                        @NotNull CborItemDecoder<V> valDecoder,
                                        @NotNull BiFunction<K, V, T> makeItem,
                                        long length) {
-            this.decoder = decoder;
             this.keyDecoder = keyDecoder;
             this.valDecoder = valDecoder;
             this.makeItem = makeItem;
@@ -599,10 +611,8 @@ public final class CborDecoder {
             if (remaining <= 0)
                 throw new NoSuchElementException();
             remaining -= 1;
-            decoder.nextToken();
-            K k = keyDecoder.next(decoder);
-            decoder.nextToken();
-            V v = valDecoder.next(decoder);
+            K k = keyDecoder.next(CborDecoder.this);
+            V v = valDecoder.next(CborDecoder.this);
             return makeItem.apply(k, v);
         }
     }

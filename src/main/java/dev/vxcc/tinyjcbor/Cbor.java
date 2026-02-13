@@ -13,7 +13,6 @@ public class Cbor {
     /** Uses the buffer's byte order as network order for integers & floats */
     public static <T> T decode(@NotNull ByteBuffer buffer, @NotNull CborItemDecoder<T> parser) throws InvalidCborException {
         var decoder = new CborDecoder(buffer);
-        decoder.nextToken();
         return parser.next(decoder);
     }
 

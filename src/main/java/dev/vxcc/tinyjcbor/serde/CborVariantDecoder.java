@@ -56,8 +56,8 @@ public final class CborVariantDecoder<T> implements CborItemDecoder<T> {
     }
 
     @Override
-    public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        var type = decoder.tokenType();
+    public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
+        var type = decoder.peekTokenType();
         var possible = byType.get(type);
         if (possible != null) {
             snapshot.from(decoder);
