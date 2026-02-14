@@ -13,21 +13,23 @@ maven {
 }
 
 dependencies {
-    implementation("dev.vxcc:tinyjcbor:1.0.0-pre.1")
+    implementation("dev.vxcc:tinyjcbor:1.0.0-pre.2")
 }
 ```
 
 ```xml
-<repository>
-  <id>vxcc</id>
-  <url>https://maven.vxcc.dev/libs</url>
-</repository>
+<distributionManagement>
+    <repository>
+        <id>vxcc</id>
+        <url>https://maven.vxcc.dev/libs</url>
+    </repository>
+</distributionManagement>
 
 <dependencies>
     <dependency>
       <groupId>dev.vxcc</groupId>
       <artifactId>tinyjcbor</artifactId>
-      <version>1.0.0-pre.1</version>
+      <version>1.0.0-pre.2</version>
     </dependency>
 </dependencies>
 ```

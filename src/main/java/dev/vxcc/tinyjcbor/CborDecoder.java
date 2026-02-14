@@ -208,6 +208,12 @@ public final class CborDecoder {
             throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), currentTokenType());
     }
 
+    public void readBreak() throws UnexpectedCborException {
+        nextToken();
+        if (currentTokenType() != CborType.Break)
+            throw new UnexpectedCborException.UnexpectedType(CborType.Break.name(), currentTokenType());
+    }
+
     /**
      * @return the known length of the array, or [Long.MIN_VALUE] if it's an indefinite length array (terminated by break)
      */
@@ -456,7 +462,17 @@ public final class CborDecoder {
     }
 
     /**
-     * this should always follow a call to [nextToken].
+     * reads the whole array, including the Break, if indefinite
+     */
+    public <T> @NotNull Iterator<@Nullable Void> readArrayIter() throws UnexpectedCborException {
+        long length = readArray();
+        if (length == Long.MIN_VALUE) {
+            return new IndefiniteLengthArrayIterator<>((decoder) -> null);
+        }
+        return new FiniteLengthArrayIterator<>((decoder) -> null, length);
+    }
+
+    /**
      * reads the whole array, including the Break, if indefinite
      */
     public <T> @NotNull Iterator<T> readArray(@NotNull CborItemDecoder<T> elementDecoder) throws UnexpectedCborException {
@@ -468,7 +484,17 @@ public final class CborDecoder {
     }
 
     /**
-     * this should always follow a call to [nextToken].
+     * reads the whole map, including the Break, if indefinite
+     */
+    public @NotNull Iterator<@Nullable Void> readMapIter() throws UnexpectedCborException {
+        long length = readMap();
+        if (length == Long.MIN_VALUE) {
+            return new IndefiniteLengthMapIterator<>((a) -> null, (a) -> null, (a, b) -> null);
+        }
+        return new FiniteLengthMapIterator<>((a) -> null, (a) -> null, (a, b) -> null, length);
+    }
+
+    /**
      * reads the whole map, including the Break, if indefinite
      */
     public <K, V, T> @NotNull Iterator<T> readMap(@NotNull CborItemDecoder<K> keyDecoder,
@@ -482,7 +508,6 @@ public final class CborDecoder {
     }
 
     /**
-     * this should always follow a call to [nextToken].
      * reads the whole map, including the Break, if indefinite
      */
     public <K, V> void readMap(@NotNull CborItemDecoder<K> keyDecoder,
