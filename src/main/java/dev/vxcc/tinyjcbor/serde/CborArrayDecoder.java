@@ -2,25 +2,35 @@ package dev.vxcc.tinyjcbor.serde;
 
 import dev.vxcc.tinyjcbor.CborDecoder;
 import dev.vxcc.tinyjcbor.CborType;
-import dev.vxcc.tinyjcbor.util.Collector;
 import dev.vxcc.tinyjcbor.UnexpectedCborException;
 import org.jetbrains.annotations.NotNull;
 
-public final class CborArrayDecoder<I, T> extends CborPrim.PrimitiveDecoder<T> {
+import java.util.stream.Collector;
 
-    @NotNull private final Collector<I, T> collector;
-    @NotNull private final CborItemDecoder<I> item;
+public final class CborArrayDecoder<T, R> extends CborPrim.PrimitiveDecoder<R> {
+    @NotNull private final Collector<T, ?, R> collector;
+    @NotNull private final CborItemDecoder<T> item;
 
     private static final CborType @NotNull [] ACCEPTS = { CborType.Array };
 
-    public CborArrayDecoder(@NotNull Collector<I, T> collector, @NotNull CborItemDecoder<I> item) {
+    public CborArrayDecoder(@NotNull Collector<T, ?, R> collector, @NotNull CborItemDecoder<T> item) {
         super(ACCEPTS);
         this.collector = collector;
         this.item = item;
     }
 
     @Override
-    public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        return collector.collect(decoder.readArray(item));
+    public R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
+        return next(collector, item, decoder);
+    }
+
+    private static <T, A, R> R next(@NotNull Collector<T, A, R> collector, @NotNull CborItemDecoder<T> item, @NotNull CborDecoder decoder) {
+        var out = collector.supplier().get();
+        var iter = decoder.readArray(item);
+        while (iter.hasNext()) {
+            var v = iter.next();
+            collector.accumulator().accept(out, v);
+        }
+        return collector.finisher().apply(out);
     }
 }

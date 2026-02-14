@@ -1,7 +1,7 @@
 import dev.vxcc.tinyjcbor.Cbor;
 import dev.vxcc.tinyjcbor.CborSeq;
 import dev.vxcc.tinyjcbor.serde.*;
-import dev.vxcc.tinyjcbor.util.Collectors;
+import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -9,6 +9,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,7 +30,7 @@ public class DecodeTests {
         buf.putShort((short) 0x6ab3);
         buf.flip();
 
-        var item = new CborFixedTagDecoder<>(4, new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.SIGNED));
+        var item = new CborFixedTagDecoder<>(4, new CborArrayDecoder<>(Collectors.toList(), CborPrim.SIGNED));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
         assertEquals(2, x.size());
@@ -78,9 +79,9 @@ public class DecodeTests {
         buf.put((byte) 0x05);
         buf.flip();
 
-        var item = new CborArrayDecoder<Object, ArrayList<Object>>(Collectors.arrayList(), new CborVariantDecoder<>(List.of(
+        var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
                 CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -110,9 +111,9 @@ public class DecodeTests {
         buf.put((byte) 0x05);
         buf.flip();
 
-        var item = new CborArrayDecoder<Object, ArrayList<Object>>(Collectors.arrayList(), new CborVariantDecoder<>(List.of(
+        var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
                 new LessInfoDecoder<>(CborPrim.UNSIGNED),
-                new LessInfoDecoder<>(new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED))
+                new LessInfoDecoder<>(new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED))
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -143,9 +144,9 @@ public class DecodeTests {
         buf.put((byte) 0xff);
         buf.flip();
 
-        var item = new CborArrayDecoder<Object, ArrayList<Object>>(Collectors.arrayList(), new CborVariantDecoder<>(List.of(
+        var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
                 CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -175,9 +176,9 @@ public class DecodeTests {
         buf.put((byte) 0xff);
         buf.flip();
 
-        var item = new CborArrayDecoder<Object, ArrayList<Object>>(Collectors.arrayList(), new CborVariantDecoder<>(List.of(
+        var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
                 CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.arrayList(), CborPrim.UNSIGNED)
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -211,7 +212,7 @@ public class DecodeTests {
         buf.flip();
 
         var item = new CborMapDecoder<>(
-                Collectors.map(HashMap::new),
+                MapConstructor.map(HashMap::new),
                 CborPrim.STRING,
                 new CborVariantDecoder<>(List.of(
                     CborPrim.SIGNED,
@@ -272,4 +273,6 @@ public class DecodeTests {
         assertFalse(seq.hasNext());
         assertEquals(0, buf.remaining());
     }
+
+    // TODO: test tagged decoder
 }

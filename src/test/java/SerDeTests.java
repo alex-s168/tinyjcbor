@@ -2,7 +2,7 @@ import dev.vxcc.tinyjcbor.Cbor;
 import dev.vxcc.tinyjcbor.CborDecoder;
 import dev.vxcc.tinyjcbor.CborEncoder;
 import dev.vxcc.tinyjcbor.serde.*;
-import dev.vxcc.tinyjcbor.util.Collectors;
+import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -95,7 +96,7 @@ public class SerDeTests {
         ));
         var dec = Cbor.decode(buf,
                 new CborMapDecoder<>(
-                        Collectors.mapDowncast(HashMap::new),
+                        MapConstructor.mapDowncast(HashMap::new),
                         CborPrim.STRING, CborPrim.UNSIGNED)
                 );
         assertEquals(0, buf.remaining());
@@ -222,7 +223,7 @@ public class SerDeTests {
         ));
         var dec = Cbor.decode(buf,
                 new CborArrayDecoder<>(
-                        Collectors.hashSet(),
+                        Collectors.toSet(),
                         CborPrim.STRING)
         );
         assertEquals(0, buf.remaining());
