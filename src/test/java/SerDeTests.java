@@ -229,4 +229,42 @@ public class SerDeTests {
         assertEquals(0, buf.remaining());
         assertEquals(data, dec);
     }
+
+    @Test
+    public void chunkedByteString() throws IOException {
+        var out = new ByteArrayOutputStream();
+        var enc = new CborEncoder(ByteOrder.BIG_ENDIAN, out);
+
+        var x = enc.writeChunkedByteString();
+        x.writeChunk(new byte[]{ 1, 2, 3 });
+        x.writeChunk(new byte[]{ 4, 5 });
+        x.end();
+
+        var buf = ByteBuffer.wrap(out.toByteArray());
+        var dec = Cbor.decode(buf, CborPrim.BYTE_ARRAY);
+        assertEquals(5, dec.length);
+        assertEquals(1, dec[0]);
+        assertEquals(2, dec[1]);
+        assertEquals(3, dec[2]);
+        assertEquals(4, dec[3]);
+        assertEquals(5, dec[4]);
+        assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void chunkedText() throws IOException {
+        var out = new ByteArrayOutputStream();
+        var enc = new CborEncoder(ByteOrder.BIG_ENDIAN, out);
+
+        var x = enc.writeChunkedText();
+        x.writeChunk("hello");
+        x.writeChunk(" ");
+        x.writeChunk("world");
+        x.end();
+
+        var buf = ByteBuffer.wrap(out.toByteArray());
+        var dec = Cbor.decode(buf, CborPrim.STRING);
+        assertEquals("hello world", dec);
+        assertEquals(0, buf.remaining());
+    }
 }
