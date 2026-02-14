@@ -5,11 +5,51 @@
     <artifactId>tinyjcbor</artifactId>
     <version>1.0.0-rc.1</version>
 
+    <name>tinyjcbor</name>
+    <description>Small CBOR (De-)serialization library</description>
+    <url>https://github.com/alex-s168/tinyjcbor</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>0BSD</name>
+            <url>https://spdx.org/licenses/0BSD.html</url>
+            <distribution>repo</distribution>
+            <comments>Permissive; no attribution required; commercial use allowed</comments>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>vxcc</name>
+        <url>https://vxcc.dev/</url>
+    </organization>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <developers>
+        <developer>
+            <id>alex_s168</id>
+            <name>Alexander Nutz</name>
+            <email>alexander.nutz@vxcc.dev</email>
+            <url>https://alex.vxcc.dev</url>
+            <roles>
+                <role>maintainer</role>
+                <role>developer</role>
+            </roles>
+            <timezone>Europe/Vienna</timezone>
+            <properties>
+                <picUrl>https://alex.vxcc.dev/res/badge.png</picUrl>
+                <cardano>addr1qy9nhw7rcldtnlxpa2s9ue0fh6qyj32f84h3grryxtv83tczfcn66nzzye84dqe4s6gyre3qv8ev9zu2yfc0zxml259saxhelz</cardano>
+                <nostr>npub17semnd065ahhsajlylkyd3lahcykpuw45rhj7cge3uqdfq24y84st0g4gr</nostr>
+                <discord>alex_s168</discord>
+                <pgp>-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmDMESV+rKRYJKwYBBAHaRw8BAQdAnqCll9RSzZqdkNQ7wPflC5lxdrBjLfrUJL9d\nSn6Kg6W0KEFsZXhhbmRlciBOdXR6IDxhbGV4YW5kZXIubnV0ekB2eGNjLmRldj6I\nfwQTFggAMQUCSV+rKQkQ3pe4LtbJUFEWIQSny6VCXd8Q/yPCYL/el7gu1slQUQIb\nAwIeAQMFAHgAAK3eAQDERcYpLxmYtPMf4uK5LJBFltrx6+/l0czZGJmALNVqLwD+\nL6LelLB7IflN/FQ+SIywQdy7j2Oz1MWCqddgsO7l8gy4OARJX6spEgorBgEEAZdV\nAQUBAQdAn87fzLRlZE0Jm9jjczozYy7YV0Ebqc7d3cDgAoTdXWEDAQgJiHsEGBYI\nAC4FAklfqykJEN6XuC7WyVBRFiEEp8ulQl3fEP8jwmC/3pe4LtbJUFECGwwDBQB4\nAAAJ+wEAv1BdsZnnNlQkO5Y16dSvugs55Re7E/ZM1PqZ8idrZowA+KcvonCro495\nWXaccbOn15KsPTz+LVU6XQQzQ3ePawQ=\n=g/Kn\n-----END PGP PUBLIC KEY BLOCK-----</pgp>
+            </properties>
+        </developer>
+    </developers>
 
     <dependencies>
         <dependency>
