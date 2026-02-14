@@ -7,6 +7,13 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Only use this if you know the details of CBOR.
+ *
+ * @see CborEncoder
+ *
+ * @since 1.0.0-rc.1
+ */
 public final class CborRawEncoder {
     @NotNull
     public final OutputStream out;
