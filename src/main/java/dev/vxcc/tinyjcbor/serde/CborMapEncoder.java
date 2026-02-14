@@ -6,13 +6,13 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.util.Map;
 
-public class CborMapEncoder<K, V, M extends Map<K, V>> implements CborItemEncoder<M> {
+public class CborMapEncoder<K, V, M extends Map<K, V>> implements CborSerializer<M> {
     @NotNull
-    private final CborItemEncoder<K> key;
+    private final CborSerializer<K> key;
     @NotNull
-    private final CborItemEncoder<V> val;
+    private final CborSerializer<V> val;
 
-    public CborMapEncoder(@NotNull CborItemEncoder<K> key, @NotNull CborItemEncoder<V> val) {
+    public CborMapEncoder(@NotNull CborSerializer<K> key, @NotNull CborSerializer<V> val) {
         this.key = key;
         this.val = val;
     }

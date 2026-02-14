@@ -5,11 +5,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-public class CborFixedTagEncoder<T> implements CborItemEncoder<T> {
+public class CborFixedTagEncoder<T> implements CborSerializer<T> {
     private final long tag;
-    @NotNull private final CborItemEncoder<T> item;
+    @NotNull private final CborSerializer<T> item;
 
-    public CborFixedTagEncoder(long tag, @NotNull CborItemEncoder<T> item) {
+    public CborFixedTagEncoder(long tag, @NotNull CborSerializer<T> item) {
         this.tag = tag;
         this.item = item;
     }

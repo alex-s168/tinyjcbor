@@ -6,11 +6,11 @@ import dev.vxcc.tinyjcbor.UnexpectedCborException;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class CborTaggedDecoder<I, O> extends CborPrim.PrimitiveDecoder<O> {
-    @NotNull private final CborItemDecoder<I> item;
+    @NotNull private final CborDeserializer<I> item;
 
-    private static final CborType @NotNull [] ACCEPTS = { CborType.Tagged };
+    private static final CborType @NotNull [] ACCEPTS = { CborType.Tag };
 
-    public CborTaggedDecoder(@NotNull CborItemDecoder<I> item) {
+    public CborTaggedDecoder(@NotNull CborDeserializer<I> item) {
         super(ACCEPTS);
         this.item = item;
     }

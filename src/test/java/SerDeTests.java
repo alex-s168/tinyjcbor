@@ -119,13 +119,13 @@ public class SerDeTests {
         var decoder = new CborDecoder(buf);
         var map = decoder.readMapManual();
         map.next();
-        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals("some", decoder.read(CborPrim.STRING));
         assertEquals(1L, decoder.readInt());
         map.next();
-        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals("data", decoder.read(CborPrim.STRING));
         assertEquals(2L, decoder.readInt());
         map.next();
-        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals("here", decoder.read(CborPrim.STRING));
         assertEquals(1240124L, decoder.readInt());
         map.end();
 
@@ -150,13 +150,13 @@ public class SerDeTests {
         var decoder = new CborDecoder(buf);
         var map = decoder.readMapManual();
         map.next();
-        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals("some", decoder.read(CborPrim.STRING));
         assertEquals(1L, decoder.readInt());
         map.next();
-        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals("data", decoder.read(CborPrim.STRING));
         assertEquals(2L, decoder.readInt());
         map.next();
-        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals("here", decoder.read(CborPrim.STRING));
         assertEquals(1240124L, decoder.readInt());
         map.end();
 
@@ -178,11 +178,11 @@ public class SerDeTests {
         var decoder = new CborDecoder(buf);
         var arr = decoder.readArrayManual();
         arr.next();
-        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals("some", decoder.read(CborPrim.STRING));
         arr.next();
-        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals("data", decoder.read(CborPrim.STRING));
         arr.next();
-        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals("here", decoder.read(CborPrim.STRING));
         arr.end();
 
         assertEquals(0, buf.remaining());
@@ -199,11 +199,11 @@ public class SerDeTests {
         var decoder = new CborDecoder(buf);
         var map = decoder.readArrayManual();
         map.next();
-        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals("some", decoder.read(CborPrim.STRING));
         map.next();
-        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals("data", decoder.read(CborPrim.STRING));
         map.next();
-        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals("here", decoder.read(CborPrim.STRING));
         map.end();
 
         assertEquals(0, buf.remaining());

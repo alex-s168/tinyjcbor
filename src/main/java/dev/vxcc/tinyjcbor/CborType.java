@@ -2,15 +2,20 @@ package dev.vxcc.tinyjcbor;
 
 /** CBOR Major Type */
 public enum CborType {
+    /** positive integer */
     UnsignedInteger,
+    /** integer that is definitely negative */
     NegativeInteger,
-    Bytes,
-    Utf8String,
+    /** byte array */
+    ByteString,
+    /** UTF-8 encoded string */
+    Text,
     /** Contains multiple CBOR items */
     Array,
     /** Contains multiple pairs of CBOR items */
     Map,
-    Tagged,
+    /** a tag prefix of an item */
+    Tag,
     /** simple value = 20 */
     False,
     /** simple value = 21 */

@@ -246,13 +246,13 @@ public class DecodeTests {
     }
 
     @Test
-    public void chain() {
+    public void chainDecoder() {
         var buf = ByteBuffer.allocate(64);
         buf.put((byte) 0x02);
         buf.put((byte) 0x03);
         buf.flip();
 
-        CborItemDecoder<Long> item = CborItemDecoder.chain(CborPrim.UNSIGNED, CborPrim.UNSIGNED, Long::sum);
+        CborDeserializer<Long> item = CborDeserializer.chain(CborPrim.UNSIGNED, CborPrim.UNSIGNED, Long::sum);
         var seq = new CborSeq(buf);
         assertTrue(seq.hasNext());
         assertEquals(2 + 3, seq.next(item));
@@ -261,12 +261,12 @@ public class DecodeTests {
     }
 
     @Test
-    public void map() {
+    public void mapDecoder() {
         var buf = ByteBuffer.allocate(64);
         buf.put((byte) 0x02);
         buf.flip();
 
-        CborItemDecoder<Integer> item = CborItemDecoder.map(CborPrim.UNSIGNED, x -> (Integer) (int) (long) x);
+        CborDeserializer<Integer> item = CborDeserializer.map(CborPrim.UNSIGNED, x -> (Integer) (int) (long) x);
         var seq = new CborSeq(buf);
         assertTrue(seq.hasNext());
         assertEquals(2, seq.next(item));

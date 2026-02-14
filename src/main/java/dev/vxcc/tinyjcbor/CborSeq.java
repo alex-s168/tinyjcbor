@@ -1,6 +1,6 @@
 package dev.vxcc.tinyjcbor;
 
-import dev.vxcc.tinyjcbor.serde.CborItemDecoder;
+import dev.vxcc.tinyjcbor.serde.CborDeserializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
@@ -18,7 +18,7 @@ public class CborSeq {
         return decoder.hasNext();
     }
 
-    public <T> @NotNull T next(@NotNull CborItemDecoder<T> item) throws UnexpectedCborException {
+    public <T> @NotNull T next(@NotNull CborDeserializer<T> item) throws UnexpectedCborException {
         if (!decoder.hasNext())
             throw new NoSuchElementException();
         snapshot.from(decoder);

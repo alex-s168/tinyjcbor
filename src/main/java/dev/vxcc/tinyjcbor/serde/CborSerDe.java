@@ -8,15 +8,14 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-public class CborSerDe<T> implements CborItemDecoder<T>, CborItemEncoder<T> {
-    @NotNull public final CborItemEncoder<T> encoder;
-    @NotNull public final CborItemDecoder<T> decoder;
+public class CborSerDe<T> implements CborDeserializer<T>, CborSerializer<T> {
+    @NotNull public final CborSerializer<T> encoder;
+    @NotNull public final CborDeserializer<T> decoder;
 
-    public CborSerDe(@NotNull CborItemDecoder<T> decoder, @NotNull CborItemEncoder<T> encoder) {
+    public CborSerDe(@NotNull CborDeserializer<T> decoder, @NotNull CborSerializer<T> encoder) {
         this.encoder = encoder;
         this.decoder = decoder;
     }
-
 
     @Override
     public T next(@NotNull CborDecoder in) throws UnexpectedCborException {

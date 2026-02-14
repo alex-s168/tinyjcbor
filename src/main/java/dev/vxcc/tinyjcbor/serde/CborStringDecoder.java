@@ -11,7 +11,7 @@ import java.io.Writer;
 
 public abstract class CborStringDecoder<R> extends CborPrim.PrimitiveDecoder<R> {
 
-    private static final CborType @NotNull [] ACCEPTS = { CborType.Utf8String };
+    private static final CborType @NotNull [] ACCEPTS = { CborType.Text};
 
     public CborStringDecoder() {
         super(ACCEPTS);
@@ -19,7 +19,7 @@ public abstract class CborStringDecoder<R> extends CborPrim.PrimitiveDecoder<R> 
 
     @Override
     public final R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        var reader = decoder.getUtf8();
+        var reader = decoder.readText();
         R res;
         try {
             res = process(reader);

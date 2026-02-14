@@ -1,5 +1,6 @@
 package dev.vxcc.tinyjcbor;
 
+import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -66,28 +67,30 @@ public final class CborEncoder {
         writeByteString(array, 0, array.length);
     }
 
-    public void writeUtf8Raw(byte @NotNull[] array, int off, int length) throws IOException {
+    public void writeTextUtf8(byte @NotNull[] array, int off, int length) throws IOException {
         unsafe.writeBeginFinite(3, length);
         unsafe.out.write(array, off, length);
     }
 
-    public void writeUtf8Raw(byte @NotNull[] array) throws IOException {
-        writeUtf8Raw(array, 0, array.length);
+    public void writeTextUtf8(byte @NotNull[] array) throws IOException {
+        writeTextUtf8(array, 0, array.length);
     }
 
     public void writeText(String s) throws IOException {
-        writeUtf8Raw(s.getBytes(StandardCharsets.UTF_8));
+        writeTextUtf8(s.getBytes(StandardCharsets.UTF_8));
     }
 
     @NotNull private final ChunkedByteStringWriter chunkedByteStringWriter = new ChunkedByteStringWriter();
     @NotNull private final ChunkedTextWriter chunkedTextWriter = new ChunkedTextWriter();
 
+    @CheckReturnValue
     public ChunkedByteStringWriter writeChunkedByteString() throws IOException {
         unsafe.writeBeginIndefinite(2);
         chunkedByteStringWriter.init();
         return chunkedByteStringWriter;
     }
 
+    @CheckReturnValue
     public ChunkedTextWriter writeChunkedText() throws IOException {
         unsafe.writeBeginIndefinite(3);
         chunkedTextWriter.init();
@@ -137,7 +140,7 @@ public final class CborEncoder {
         public void writeRawUtf8Chunk(byte @NotNull[] array, int off, int length) throws IOException {
             if (end)
                 throw new IllegalStateException();
-            writeUtf8Raw(array, off, length);
+            writeTextUtf8(array, off, length);
         }
 
         public void writeRawUtf8Chunk(byte @NotNull[] array) throws IOException {
@@ -167,12 +170,14 @@ public final class CborEncoder {
     @NotNull
     private final CborEncoder.IndefiniteWriter indefiniteWriter = new IndefiniteWriter();
 
+    @CheckReturnValue
     public IndefiniteWriter writeArray() throws IOException {
         unsafe.writeBeginIndefinite(4);
         indefiniteWriter.init();
         return indefiniteWriter;
     }
 
+    @CheckReturnValue
     public IndefiniteWriter writeMap() throws IOException {
         unsafe.writeBeginIndefinite(5);
         indefiniteWriter.init();

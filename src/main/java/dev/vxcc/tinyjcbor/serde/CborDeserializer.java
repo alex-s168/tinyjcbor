@@ -9,7 +9,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 @FunctionalInterface
-public interface CborItemDecoder<T> {
+public interface CborDeserializer<T> {
     T next(@NotNull CborDecoder decoder) throws UnexpectedCborException;
 
     default boolean mightAccept(@NotNull CborType type) {
@@ -20,8 +20,8 @@ public interface CborItemDecoder<T> {
         return false;
     }
 
-    static <T, R> @NotNull CborItemDecoder<R> map(@NotNull CborItemDecoder<T> parent, @NotNull Function<T, R> fn) {
-        return new CborItemDecoder<>() {
+    static <T, R> @NotNull CborDeserializer<R> map(@NotNull CborDeserializer<T> parent, @NotNull Function<T, R> fn) {
+        return new CborDeserializer<>() {
             @Override
             public R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
                 return fn.apply(parent.next(decoder));
@@ -39,8 +39,8 @@ public interface CborItemDecoder<T> {
         };
     }
 
-    static <T, B, R> @NotNull CborItemDecoder<R> chain(@NotNull CborItemDecoder<T> parent, @NotNull CborItemDecoder<B> other, @NotNull BiFunction<T, B, R> then) {
-        return new CborItemDecoder<>() {
+    static <T, B, R> @NotNull CborDeserializer<R> chain(@NotNull CborDeserializer<T> parent, @NotNull CborDeserializer<B> other, @NotNull BiFunction<T, B, R> then) {
+        return new CborDeserializer<>() {
             @Override
             public R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
                 var a = parent.next(decoder);

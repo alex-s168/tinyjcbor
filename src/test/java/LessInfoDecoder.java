@@ -1,13 +1,13 @@
 import dev.vxcc.tinyjcbor.CborDecoder;
 import dev.vxcc.tinyjcbor.UnexpectedCborException;
-import dev.vxcc.tinyjcbor.serde.CborItemDecoder;
+import dev.vxcc.tinyjcbor.serde.CborDeserializer;
 import org.jetbrains.annotations.NotNull;
 
-public class LessInfoDecoder<T> implements CborItemDecoder<T> {
+public class LessInfoDecoder<T> implements CborDeserializer<T> {
     @NotNull
-    private final CborItemDecoder<T> impl;
+    private final CborDeserializer<T> impl;
     
-    public LessInfoDecoder(@NotNull CborItemDecoder<T> impl) {
+    public LessInfoDecoder(@NotNull CborDeserializer<T> impl) {
         this.impl = impl;
     }
 

@@ -3,6 +3,9 @@ package dev.vxcc.tinyjcbor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * The decoded CBOR data didn't conform to the expected schema
+ */
 public abstract class UnexpectedCborException extends RuntimeException {
     public static class WrongTag extends UnexpectedCborException {
         @Nullable public final Long expected;

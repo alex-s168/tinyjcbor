@@ -7,10 +7,10 @@ import java.io.IOException;
 import java.util.function.Function;
 
 @FunctionalInterface
-public interface CborItemEncoder<T> {
+public interface CborSerializer<T> {
     void encode(@NotNull CborEncoder encoder, T value) throws IOException;
 
-    static <I, T> CborItemEncoder<I> map(@NotNull CborItemEncoder<T> original, @NotNull Function<I, T> fn) {
+    static <I, T> CborSerializer<I> map(@NotNull CborSerializer<T> original, @NotNull Function<I, T> fn) {
         return (encoder, value) ->
                 original.encode(encoder, fn.apply(value));
     }

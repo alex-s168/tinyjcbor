@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.Reader;
 
 public final class CborPrim {
-    public static abstract class PrimitiveDecoder<T> implements CborItemDecoder<T> {
+    public static abstract class PrimitiveDecoder<T> implements CborDeserializer<T> {
         private final @NotNull CborType @NotNull [] accepts;
 
         public PrimitiveDecoder(@NotNull CborType @NotNull [] accepts) {

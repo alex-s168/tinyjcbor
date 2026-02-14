@@ -8,38 +8,38 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public final class CborVariantDecoder<T> implements CborItemDecoder<T> {
+public final class CborVariantDecoder<T> implements CborDeserializer<T> {
     @NotNull private final Object[] decoders;
-    @NotNull private final Map<CborType, CborItemDecoder<?>[]> byType;
+    @NotNull private final Map<CborType, CborDeserializer<?>[]> byType;
     @NotNull private final Set<CborType> neverAccepts;
     @NotNull private final CborDecoder.Snapshot snapshot = new CborDecoder.Snapshot();
     @Nullable private String expected;
 
-    public CborVariantDecoder(@NotNull List<CborItemDecoder<? extends T>> decodersIn) {
-        var decoders = new ArrayList<CborItemDecoder<? extends T>>();
+    public CborVariantDecoder(@NotNull List<CborDeserializer<? extends T>> decodersIn) {
+        var decoders = new ArrayList<CborDeserializer<? extends T>>();
         for (var decoder : decodersIn) {
             if (decoder instanceof CborVariantDecoder<? extends T> v) {
                 for (var x : v.decoders) {
-                    decoders.add((CborItemDecoder<? extends T>) x);
+                    decoders.add((CborDeserializer<? extends T>) x);
                 }
             } else {
                 decoders.add(decoder);
             }
         }
 
-        var byType = new HashMap<CborType, CborItemDecoder<?>[]>();
+        var byType = new HashMap<CborType, CborDeserializer<?>[]>();
         var neverAccepts = new HashSet<CborType>();
         for (var type : CborType.values()) {
             var anyNotNeverAccepts = false;
 
-            var possible = new ArrayList<CborItemDecoder<?>>();
+            var possible = new ArrayList<CborDeserializer<?>>();
             for (var decoder : decoders) {
                 if (decoder.mightAccept(type))
                     possible.add(decoder);
                 if (!decoder.neverAccepts(type))
                     anyNotNeverAccepts = true;
             }
-            var arr = new CborItemDecoder[possible.size()];
+            var arr = new CborDeserializer[possible.size()];
             possible.toArray(arr);
             byType.put(type, arr);
 
@@ -63,7 +63,7 @@ public final class CborVariantDecoder<T> implements CborItemDecoder<T> {
             snapshot.from(decoder);
             for (var child : possible) {
                 try {
-                    return ((CborItemDecoder<? extends T>) child).next(decoder);
+                    return ((CborDeserializer<? extends T>) child).next(decoder);
                 } catch (UnexpectedCborException ignored) {
                     decoder.reset(snapshot);
                 }

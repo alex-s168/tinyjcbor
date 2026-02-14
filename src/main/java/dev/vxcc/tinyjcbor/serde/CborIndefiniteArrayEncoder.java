@@ -5,10 +5,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-public class CborIndefiniteArrayEncoder<T, C extends Iterable<T>> implements CborItemEncoder<C> {
-    @NotNull private final CborItemEncoder<T> item;
+public class CborIndefiniteArrayEncoder<T, C extends Iterable<T>> implements CborSerializer<C> {
+    @NotNull private final CborSerializer<T> item;
 
-    public CborIndefiniteArrayEncoder(@NotNull CborItemEncoder<T> item) {
+    public CborIndefiniteArrayEncoder(@NotNull CborSerializer<T> item) {
         this.item = item;
     }
 

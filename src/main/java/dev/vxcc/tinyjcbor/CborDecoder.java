@@ -1,6 +1,7 @@
 package dev.vxcc.tinyjcbor;
 
-import dev.vxcc.tinyjcbor.serde.CborItemDecoder;
+import dev.vxcc.tinyjcbor.serde.CborDeserializer;
+import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,10 +23,22 @@ public final class CborDecoder {
     private int tokenAdditionalInfo;
     private boolean tokenIndefiniteLength;
 
+    /**
+     * Construct a new CBOR decoder, with the byte order of the buffer!
+     *
+     * @param buffer byte buffer from which CBOR is decoded from.
+     *               <br>You can continue to use the buffer after you finished decoding CBOR, to for example read additional data, or to make sure all data has been decoded.
+     */
     public CborDecoder(@NotNull ByteBuffer buffer) {
         this.buffer = buffer;
     }
 
+    /**
+     * Represents a copy of the state of a CBOR decoder at a past point in time.
+     *
+     * @see #reset(Snapshot)
+     * @see #snapshot()
+     */
     public static final class Snapshot {
         private int position;
         private long tokenArg;
@@ -33,6 +46,7 @@ public final class CborDecoder {
         private int tokenAdditionalInfo;
         private boolean tokenIndefiniteLength;
 
+        /** Back-up the given decoder into this snapshot */
         public void from(@NotNull CborDecoder decoder) {
             position = decoder.buffer.position();
             tokenArg = decoder.tokenArg;
@@ -42,6 +56,26 @@ public final class CborDecoder {
         }
     }
 
+    /**
+     * Back-up the whole decoder state, so it can be set back to the snapshot again later.
+     *
+     * <p>If you do multiple snapshots, you should manually create an instance of {@code Snapshot}, and call {@code Snapshot#from}, like this:</p>
+     *
+     * <pre><code>
+     *     var snap = new CborDecoder.Snapshot();
+     *     snap.from(decoder);
+     * </code></pre>
+     *
+     * @see #reset(Snapshot)
+     * @see Snapshot#from(CborDecoder)
+     */
+    public @NotNull Snapshot snapshot() {
+        var snap = new Snapshot();
+        snap.from(this);
+        return snap;
+    }
+
+    /** Load decoder state from snapshot / restore snapshot */
     public void reset(@NotNull Snapshot snapshot) {
         buffer.position(snapshot.position);
         tokenArg = snapshot.tokenArg;
@@ -94,11 +128,11 @@ public final class CborDecoder {
         return switch (tokenMajorType) {
             case 0 -> CborType.UnsignedInteger;
             case 1 -> CborType.NegativeInteger;
-            case 2 -> CborType.Bytes;
-            case 3 -> CborType.Utf8String;
+            case 2 -> CborType.ByteString;
+            case 3 -> CborType.Text;
             case 4 -> CborType.Array;
             case 5 -> CborType.Map;
-            case 6 -> CborType.Tagged;
+            case 6 -> CborType.Tag;
             case 7 -> switch (tokenAdditionalInfo) {
                 case 25 -> CborType.Float16;
                 case 26 -> CborType.Float32;
@@ -129,6 +163,60 @@ public final class CborDecoder {
         var ty = currentTokenType();
         reset(peekSnapshot);
         return ty;
+    }
+
+    public <T> T read(@NotNull CborDeserializer<T> decoder) throws UnexpectedCborException {
+        return decoder.next(this);
+    }
+
+    public void readAny() throws UnexpectedCborException {
+        nextToken();
+        switch (currentTokenType()) {
+            case Tag:
+                readAny();
+                break;
+
+            case Map:
+                if (tokenIndefiniteLength) {
+                    while (peekTokenType() != CborType.Break) {
+                        readAny();
+                        readAny();
+                    }
+                    readBreak();
+                } else {
+                    long n = tokenArg;
+                    for (long i = 0; i < n; i ++) {
+                        readAny();
+                        readAny();
+                    }
+                }
+                break;
+
+            case Array:
+                if (tokenIndefiniteLength) {
+                    while (peekTokenType() != CborType.Break)
+                        readAny();
+                    readBreak();
+                } else {
+                    long n = tokenArg;
+                    for (long i = 0; i < n; i ++)
+                        readAny();
+                }
+                break;
+
+            case Text:
+            case ByteString:
+                if (tokenIndefiniteLength) {
+                    while (peekTokenType() != CborType.Break)
+                        readAny();
+                    readBreak();
+                } else {
+                    long n = tokenArg;
+                    for (long i = 0; i < n; i ++)
+                        buffer.get();
+                }
+                break;
+        }
     }
 
     public byte readSimple() throws UnexpectedCborException {
@@ -179,7 +267,7 @@ public final class CborDecoder {
     public long readTag() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 6)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Tagged.name(), currentTokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Tag.name(), currentTokenType());
         return tokenArg;
     }
 
@@ -241,12 +329,13 @@ public final class CborDecoder {
     private final IndefiniteByteArrayReader indefiniteByteArrayReader = new IndefiniteByteArrayReader();
     private final FiniteByteArrayReader finiteByteArrayReader = new FiniteByteArrayReader();
 
-    public ByteArrayReader getBytes() throws UnexpectedCborException {
+    @CheckReturnValue
+    public ByteArrayReader readByteString() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 2)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Bytes.name(), currentTokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.ByteString.name(), currentTokenType());
         if (tokenIndefiniteLength) {
-            indefiniteByteArrayReader.init(2, CborType.Bytes.name());
+            indefiniteByteArrayReader.init(2, CborType.ByteString.name());
             return indefiniteByteArrayReader;
         }
         finiteByteArrayReader.init(tokenArg);
@@ -255,14 +344,18 @@ public final class CborDecoder {
 
     private final ByteArrayReaderInputStream byteArrayReaderInputStream = new ByteArrayReaderInputStream();
 
-    public Reader getUtf8() throws UnexpectedCborException {
+    /**
+     * @see dev.vxcc.tinyjcbor.serde.CborPrim#STRING Decoder for directly reading a {@code String}
+     */
+    @CheckReturnValue
+    public Reader readText() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 3)
-            throw new UnexpectedCborException.UnexpectedType(CborType.Utf8String.name(), currentTokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.Text.name(), currentTokenType());
 
         ByteArrayReader byteReader;
         if (tokenIndefiniteLength) {
-            indefiniteByteArrayReader.init(3, CborType.Utf8String.name());
+            indefiniteByteArrayReader.init(3, CborType.Text.name());
             byteReader = indefiniteByteArrayReader;
         } else {
             finiteByteArrayReader.init(tokenArg);
@@ -358,6 +451,7 @@ public final class CborDecoder {
             return out.toByteArray();
         }
 
+        @CheckReturnValue
         public final ByteArrayReaderInputStream inputStream() {
             byteArrayReaderInputStream.init(this);
             return byteArrayReaderInputStream;
@@ -474,6 +568,7 @@ public final class CborDecoder {
      *     arr.end();
      * </code></pre>
      */
+    @CheckReturnValue
     public @NotNull ManualReader readArrayManual() throws UnexpectedCborException {
         long length = readArray();
         manualReader.init(length);
@@ -494,7 +589,31 @@ public final class CborDecoder {
      *     // assert that the map ends here
      *     arr.end();
      * </code></pre>
+     *
+     * Example: efficiently read specific keys from map, ignoring unknown keys:
+     * <pre><code>
+     *     String name;
+     *     String password;
+     *
+     *     var map = decoder.readMapManual();
+     *     while (map.hasNext()) {
+     *         map.next();
+     *         if (decoder.peekTokenType() != CborType.Text) {
+     *             decoder.readAny();
+     *             decoder.readAny();
+     *             continue;
+     *         }
+     *
+     *         switch (decoder.read(CborPrim.STRING)) {
+     *             case "name": name = decoder.read(CborPrim.STRING); break;
+     *             case "password": password = decoder.read(CborPrim.STRING); break;
+     *             default: break;
+     *         }
+     *     }
+     *     map.end();
+     * </code></pre>
      */
+    @CheckReturnValue
     public @NotNull ManualReader readMapManual() throws UnexpectedCborException {
         long length = readMap();
         manualReader.init(length);
@@ -564,7 +683,8 @@ public final class CborDecoder {
     /**
      * reads the whole array, including the Break, if indefinite
      */
-    public <T> @NotNull Iterator<T> readArray(@NotNull CborItemDecoder<T> elementDecoder) throws UnexpectedCborException {
+    @CheckReturnValue
+    public <T> @NotNull Iterator<T> readArray(@NotNull CborDeserializer<T> elementDecoder) throws UnexpectedCborException {
         long length = readArray();
         if (length == Long.MIN_VALUE) {
             return new IndefiniteLengthArrayIterator<>(elementDecoder);
@@ -575,8 +695,9 @@ public final class CborDecoder {
     /**
      * reads the whole map, including the Break, if indefinite
      */
-    public <K, V, T> @NotNull Iterator<T> readMap(@NotNull CborItemDecoder<K> keyDecoder,
-                                                  @NotNull CborItemDecoder<V> valDecoder,
+    @CheckReturnValue
+    public <K, V, T> @NotNull Iterator<T> readMap(@NotNull CborDeserializer<K> keyDecoder,
+                                                  @NotNull CborDeserializer<V> valDecoder,
                                                   @NotNull BiFunction<K, V, T> makeItem) throws UnexpectedCborException {
         long length = readMap();
         if (length == Long.MIN_VALUE) {
@@ -588,8 +709,8 @@ public final class CborDecoder {
     /**
      * reads the whole map, including the Break, if indefinite
      */
-    public <K, V> void readMap(@NotNull CborItemDecoder<K> keyDecoder,
-                               @NotNull CborItemDecoder<V> valDecoder,
+    public <K, V> void readMap(@NotNull CborDeserializer<K> keyDecoder,
+                               @NotNull CborDeserializer<V> valDecoder,
                                @NotNull BiConsumer<K, V> each) throws UnexpectedCborException {
 
         var iter = readMap(keyDecoder, valDecoder, (a, b) -> {
@@ -601,9 +722,9 @@ public final class CborDecoder {
     }
 
     private final class IndefiniteLengthArrayIterator<T> implements Iterator<T> {
-        @NotNull private final CborItemDecoder<T> elementDecoder;
+        @NotNull private final CborDeserializer<T> elementDecoder;
 
-        public IndefiniteLengthArrayIterator(@NotNull CborItemDecoder<T> elementDecoder) {
+        public IndefiniteLengthArrayIterator(@NotNull CborDeserializer<T> elementDecoder) {
             this.elementDecoder = elementDecoder;
         }
 
@@ -626,10 +747,10 @@ public final class CborDecoder {
 
     private final class FiniteLengthArrayIterator<T> implements Iterator<T>
     {
-        @NotNull private final CborItemDecoder<T> elementDecoder;
+        @NotNull private final CborDeserializer<T> elementDecoder;
         private long remaining;
 
-        public FiniteLengthArrayIterator(@NotNull CborItemDecoder<T> elementDecoder,
+        public FiniteLengthArrayIterator(@NotNull CborDeserializer<T> elementDecoder,
                                          long length) {
             this.elementDecoder = elementDecoder;
             this.remaining = length;
@@ -650,12 +771,12 @@ public final class CborDecoder {
     }
 
     private final class IndefiniteLengthMapIterator<K, V, T> implements Iterator<T> {
-        @NotNull private final CborItemDecoder<K> keyDecoder;
-        @NotNull private final CborItemDecoder<V> valDecoder;
+        @NotNull private final CborDeserializer<K> keyDecoder;
+        @NotNull private final CborDeserializer<V> valDecoder;
         @NotNull private final BiFunction<K, V, T> makeItem;
 
-        public IndefiniteLengthMapIterator(@NotNull CborItemDecoder<K> keyDecoder,
-                                           @NotNull CborItemDecoder<V> valDecoder,
+        public IndefiniteLengthMapIterator(@NotNull CborDeserializer<K> keyDecoder,
+                                           @NotNull CborDeserializer<V> valDecoder,
                                            @NotNull BiFunction<K, V, T> makeItem) {
             this.keyDecoder = keyDecoder;
             this.valDecoder = valDecoder;
@@ -689,13 +810,13 @@ public final class CborDecoder {
     }
 
     private final class FiniteLengthMapIterator<K, V, T> implements Iterator<T> {
-        @NotNull private final CborItemDecoder<K> keyDecoder;
-        @NotNull private final CborItemDecoder<V> valDecoder;
+        @NotNull private final CborDeserializer<K> keyDecoder;
+        @NotNull private final CborDeserializer<V> valDecoder;
         @NotNull private final BiFunction<K, V, T> makeItem;
         private long remaining;
 
-        public FiniteLengthMapIterator(@NotNull CborItemDecoder<K> keyDecoder,
-                                       @NotNull CborItemDecoder<V> valDecoder,
+        public FiniteLengthMapIterator(@NotNull CborDeserializer<K> keyDecoder,
+                                       @NotNull CborDeserializer<V> valDecoder,
                                        @NotNull BiFunction<K, V, T> makeItem,
                                        long length) {
             this.keyDecoder = keyDecoder;

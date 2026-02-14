@@ -10,7 +10,7 @@ import java.util.function.Function;
 public class CborByteArrayDecoder<R> extends CborPrim.PrimitiveDecoder<R> {
     @NotNull private final Function<CborDecoder.ByteArrayReader, R> consumer;
 
-    private static final CborType @NotNull [] ACCEPTS = { CborType.Bytes };
+    private static final CborType @NotNull [] ACCEPTS = { CborType.ByteString};
 
     public CborByteArrayDecoder(@NotNull Function<CborDecoder.ByteArrayReader, R> consumer) {
         super(ACCEPTS);
@@ -19,7 +19,7 @@ public class CborByteArrayDecoder<R> extends CborPrim.PrimitiveDecoder<R> {
 
     @Override
     public R next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-        var by = decoder.getBytes();
+        var by = decoder.readByteString();
         var res = consumer.apply(by);
         by.skipToEnd();
         return res;

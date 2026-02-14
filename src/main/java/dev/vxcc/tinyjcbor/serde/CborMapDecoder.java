@@ -6,10 +6,10 @@ import dev.vxcc.tinyjcbor.UnexpectedCborException;
 import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.jetbrains.annotations.NotNull;
 
-public class CborMapDecoder<K, V, O> implements CborItemDecoder<O> {
+public class CborMapDecoder<K, V, O> implements CborDeserializer<O> {
     @NotNull private final Impl<K, V, ?, O> impl;
 
-    public CborMapDecoder(@NotNull MapConstructor<K, V, ?, O> constructor, @NotNull CborItemDecoder<K> key, @NotNull CborItemDecoder<V> val) {
+    public CborMapDecoder(@NotNull MapConstructor<K, V, ?, O> constructor, @NotNull CborDeserializer<K> key, @NotNull CborDeserializer<V> val) {
         this.impl = new Impl(constructor, key, val);
     }
 
@@ -31,12 +31,12 @@ public class CborMapDecoder<K, V, O> implements CborItemDecoder<O> {
     private static class Impl<K, V, Impl, O> extends CborPrim.PrimitiveDecoder<O> {
         @NotNull
         private final MapConstructor<K, V, Impl, O> constructor;
-        @NotNull private final CborItemDecoder<K> key;
-        @NotNull private final CborItemDecoder<V> val;
+        @NotNull private final CborDeserializer<K> key;
+        @NotNull private final CborDeserializer<V> val;
 
         private static final CborType @NotNull [] ACCEPTS = { CborType.Map };
 
-        public Impl(@NotNull MapConstructor<K, V, Impl, O> constructor, @NotNull CborItemDecoder<K> key, @NotNull CborItemDecoder<V> val) {
+        public Impl(@NotNull MapConstructor<K, V, Impl, O> constructor, @NotNull CborDeserializer<K> key, @NotNull CborDeserializer<V> val) {
             super(ACCEPTS);
             this.constructor = constructor;
             this.key = key;

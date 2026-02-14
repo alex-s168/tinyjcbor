@@ -6,12 +6,12 @@ import dev.vxcc.tinyjcbor.UnexpectedCborException;
 import org.jetbrains.annotations.NotNull;
 
 public final class CborFixedTagDecoder<T> extends CborPrim.PrimitiveDecoder<T> {
-    @NotNull private final CborItemDecoder<T> item;
+    @NotNull private final CborDeserializer<T> item;
     private final long tag;
 
-    private static final CborType @NotNull [] ACCEPTS = { CborType.Tagged };
+    private static final CborType @NotNull [] ACCEPTS = { CborType.Tag};
 
-    public CborFixedTagDecoder(long tag, @NotNull CborItemDecoder<T> item) {
+    public CborFixedTagDecoder(long tag, @NotNull CborDeserializer<T> item) {
         super(ACCEPTS);
         this.item = item;
         this.tag = tag;

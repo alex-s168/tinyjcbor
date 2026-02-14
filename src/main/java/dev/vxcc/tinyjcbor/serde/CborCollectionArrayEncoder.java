@@ -6,11 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.util.Collection;
 
-public class CborCollectionArrayEncoder<T, C extends Collection<T>> implements CborItemEncoder<C> {
+public class CborCollectionArrayEncoder<T, C extends Collection<T>> implements CborSerializer<C> {
     @NotNull
-    private final CborItemEncoder<T> item;
+    private final CborSerializer<T> item;
 
-    public CborCollectionArrayEncoder(@NotNull CborItemEncoder<T> item) {
+    public CborCollectionArrayEncoder(@NotNull CborSerializer<T> item) {
         this.item = item;
     }
 
