@@ -461,15 +461,104 @@ public final class CborDecoder {
         }
     }
 
+    @NotNull
+    private final ManualReader manualReader = new ManualReader();
+
     /**
-     * reads the whole array, including the Break, if indefinite
+     * Helper for manually reading an array.
+     *
+     * <pre><code>
+     *     var arr = decoder.readArrayManual();
+     *     arr.next(); var a = decoder.readInt();
+     *     arr.next(); var b = decoder.readInt();
+     *     arr.end();
+     * </code></pre>
      */
-    public <T> @NotNull Iterator<@Nullable Void> readArrayIter() throws UnexpectedCborException {
+    public @NotNull ManualReader readArrayManual() throws UnexpectedCborException {
         long length = readArray();
-        if (length == Long.MIN_VALUE) {
-            return new IndefiniteLengthArrayIterator<>((decoder) -> null);
+        manualReader.init(length);
+        return manualReader;
+    }
+
+    /**
+     * Helper for manually reading a map.
+     *
+     * <pre><code>
+     *     var map = decoder.readMapManual();
+     *     map.next();
+     *     var k1 = decoder.readInt();
+     *     var v1 = decoder.readInt();
+     *     arr.next();
+     *     var k2 = decoder.readInt();
+     *     var v2 = decoder.readInt();
+     *     // assert that the map ends here
+     *     arr.end();
+     * </code></pre>
+     */
+    public @NotNull ManualReader readMapManual() throws UnexpectedCborException {
+        long length = readMap();
+        manualReader.init(length);
+        return manualReader;
+    }
+
+    /**
+     * Helper for manually reading a map or an array.
+     * <p>
+     * If you are reading a map, only call {@code next()} once per key-value pair.
+     *
+     * <pre><code>
+     *     var arr = decoder.readArrayManual();
+     *     arr.next(); var a = decoder.readInt();
+     *     arr.next(); var b = decoder.readInt();
+     *     // assert that the map ends here
+     *     arr.end();
+     * </code></pre>
+     */
+    public class ManualReader {
+        private long length;
+        private long i;
+        private boolean end = true;
+        private int lastBufPos;
+
+        /**
+         * @param length array/map num items, or Long.MIN_VALUE
+         */
+        private void init(long length) {
+            if (!end)
+                throw new IllegalStateException("Forgot to call ManualReader#end");
+            this.end = false;
+            this.length = length;
+            this.i = 0;
+            this.lastBufPos = buffer.position() - 1;
         }
-        return new FiniteLengthArrayIterator<>((decoder) -> null, length);
+
+        private ManualReader() {}
+
+        public boolean hasNext() {
+            if (length == Long.MIN_VALUE)
+                return peekTokenType() != CborType.Break;
+            else
+                return length > 0;
+        }
+
+        public void next() throws UnexpectedCborException {
+            if (lastBufPos == buffer.position())
+                throw new IllegalStateException("Caller of ManualReader#next didn't read elements between two next() calls");
+            lastBufPos = buffer.position();
+
+            if (!hasNext())
+                throw new UnexpectedCborException.UnexpectedEndOfArray(i);
+            i++;
+            if (length != Long.MIN_VALUE)
+                length--;
+        }
+
+        public void end() throws UnexpectedCborException {
+            if (hasNext())
+                throw new UnexpectedCborException.ExpectedEndOfArray(i);
+            if (length == Long.MIN_VALUE)
+                readBreak();
+        }
     }
 
     /**
@@ -481,17 +570,6 @@ public final class CborDecoder {
             return new IndefiniteLengthArrayIterator<>(elementDecoder);
         }
         return new FiniteLengthArrayIterator<>(elementDecoder, length);
-    }
-
-    /**
-     * reads the whole map, including the Break, if indefinite
-     */
-    public @NotNull Iterator<@Nullable Void> readMapIter() throws UnexpectedCborException {
-        long length = readMap();
-        if (length == Long.MIN_VALUE) {
-            return new IndefiniteLengthMapIterator<>((a) -> null, (a) -> null, (a, b) -> null);
-        }
-        return new FiniteLengthMapIterator<>((a) -> null, (a) -> null, (a, b) -> null, length);
     }
 
     /**

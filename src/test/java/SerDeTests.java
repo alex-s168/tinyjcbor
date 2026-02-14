@@ -1,13 +1,15 @@
 import dev.vxcc.tinyjcbor.Cbor;
+import dev.vxcc.tinyjcbor.CborDecoder;
+import dev.vxcc.tinyjcbor.CborEncoder;
 import dev.vxcc.tinyjcbor.serde.*;
 import dev.vxcc.tinyjcbor.util.Collectors;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -98,6 +100,112 @@ public class SerDeTests {
                 );
         assertEquals(0, buf.remaining());
         assertEquals(data.entrySet(), dec.entrySet());
+    }
+
+    @Test
+    public void finiteMapDecodeManual() {
+        var data = new LinkedHashMap<String, Long>();
+        data.put("some", 1L);
+        data.put("data", 2L);
+        data.put("here", 1240124L);
+
+        var buf = ByteBuffer.wrap(Cbor.encode(
+                ByteOrder.BIG_ENDIAN,
+                data,
+                new CborMapEncoder<>(CborPrim.STRING, CborPrim.UNSIGNED)
+        ));
+
+        var decoder = new CborDecoder(buf);
+        var map = decoder.readMapManual();
+        map.next();
+        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals(1L, decoder.readInt());
+        map.next();
+        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals(2L, decoder.readInt());
+        map.next();
+        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals(1240124L, decoder.readInt());
+        map.end();
+
+        assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void indefiniteMapDecodeManual() throws IOException {
+        var out = new ByteArrayOutputStream();
+        var enc = new CborEncoder(ByteOrder.BIG_ENDIAN, out);
+
+        var encMap = enc.writeMap();
+        enc.writeText("some");
+        enc.writeSigned(1L);
+        enc.writeText("data");
+        enc.writeSigned(2L);
+        enc.writeText("here");
+        enc.writeSigned(1240124L);
+        encMap.end();
+        var buf = ByteBuffer.wrap(out.toByteArray());
+
+        var decoder = new CborDecoder(buf);
+        var map = decoder.readMapManual();
+        map.next();
+        assertEquals("some", CborPrim.STRING.next(decoder));
+        assertEquals(1L, decoder.readInt());
+        map.next();
+        assertEquals("data", CborPrim.STRING.next(decoder));
+        assertEquals(2L, decoder.readInt());
+        map.next();
+        assertEquals("here", CborPrim.STRING.next(decoder));
+        assertEquals(1240124L, decoder.readInt());
+        map.end();
+
+        assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void indefiniteArrayDecodeManual() throws IOException {
+        var out = new ByteArrayOutputStream();
+        var enc = new CborEncoder(ByteOrder.BIG_ENDIAN, out);
+
+        var encMap = enc.writeArray();
+        enc.writeText("some");
+        enc.writeText("data");
+        enc.writeText("here");
+        encMap.end();
+        var buf = ByteBuffer.wrap(out.toByteArray());
+
+        var decoder = new CborDecoder(buf);
+        var arr = decoder.readArrayManual();
+        arr.next();
+        assertEquals("some", CborPrim.STRING.next(decoder));
+        arr.next();
+        assertEquals("data", CborPrim.STRING.next(decoder));
+        arr.next();
+        assertEquals("here", CborPrim.STRING.next(decoder));
+        arr.end();
+
+        assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void finiteArrDecodeManual() {
+        var buf = ByteBuffer.wrap(Cbor.encode(
+                ByteOrder.BIG_ENDIAN,
+                List.of("some", "data", "here"),
+                new CborCollectionArrayEncoder<>(CborPrim.STRING)
+        ));
+
+        var decoder = new CborDecoder(buf);
+        var map = decoder.readArrayManual();
+        map.next();
+        assertEquals("some", CborPrim.STRING.next(decoder));
+        map.next();
+        assertEquals("data", CborPrim.STRING.next(decoder));
+        map.next();
+        assertEquals("here", CborPrim.STRING.next(decoder));
+        map.end();
+
+        assertEquals(0, buf.remaining());
     }
 
     @Test
