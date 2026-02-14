@@ -241,7 +241,7 @@ public class SerDeTests {
         x.end();
 
         var buf = ByteBuffer.wrap(out.toByteArray());
-        var dec = Cbor.decode(buf, CborPrim.BYTE_ARRAY);
+        var dec = Cbor.decode(buf, CborPrim.BYTES);
         assertEquals(5, dec.length);
         assertEquals(1, dec[0]);
         assertEquals(2, dec[1]);

@@ -8,11 +8,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.Function;
 
 public class CborByteArrayDecoder<R> extends CborPrim.PrimitiveDecoder<R> {
-    @NotNull private final Function<CborDecoder.ByteArrayReader, R> consumer;
+    @NotNull private final Function<CborDecoder.ByteReader, R> consumer;
 
     private static final CborType @NotNull [] ACCEPTS = { CborType.ByteString};
 
-    public CborByteArrayDecoder(@NotNull Function<CborDecoder.ByteArrayReader, R> consumer) {
+    public CborByteArrayDecoder(@NotNull Function<CborDecoder.ByteReader, R> consumer) {
         super(ACCEPTS);
         this.consumer = consumer;
     }

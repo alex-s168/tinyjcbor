@@ -54,7 +54,7 @@ public class DecodeTests {
         buf.put((byte) 0xff);
         buf.flip();
 
-        var x = Cbor.decode(buf, CborPrim.BYTE_ARRAY);
+        var x = Cbor.decode(buf, CborPrim.BYTES);
         assertEquals(0, buf.remaining());
         assertEquals(7, x.length);
         assertEquals((byte) 0xaa, x[0]);

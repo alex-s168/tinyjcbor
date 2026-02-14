@@ -13,7 +13,12 @@ import java.util.NoSuchElementException;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-/** Uses the buffer's byte order as network order for integers & floats */
+/**
+ * Standard CBOR decoder
+ * <p>Uses the buffer's byte order as network order for integers & floats
+ *
+ * @since 1.0.0-rc.1
+ */
 public final class CborDecoder {
     @NotNull
     private final ByteBuffer buffer;
@@ -89,6 +94,8 @@ public final class CborDecoder {
     }
 
     private void nextToken() throws InvalidCborException {
+        if (!hasNext())
+            throw new NoSuchElementException();
         byte firstByte = buffer.get();
         tokenMajorType = (firstByte & 0b11100000) >> 5;
         tokenAdditionalInfo = firstByte & 0b11111;
@@ -154,8 +161,14 @@ public final class CborDecoder {
     @NotNull
     private final Snapshot peekSnapshot = new Snapshot();
 
-    /** returns the type of the next token, without reading it */
-    public @Nullable CborType peekTokenType() throws InvalidCborException {
+    /**
+     * returns the type of the next token, without reading it
+     * @return null, if there is no next token<br>
+     *         the type of the next token
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
+    public @Nullable CborType peekTokenType() {
         if (!hasNext())
             return null;
         peekSnapshot.from(this);
@@ -165,60 +178,82 @@ public final class CborDecoder {
         return ty;
     }
 
+    /**
+     * @throws NoSuchElementException there is no next item
+     * @throws UnexpectedCborException CBOR data in buffer does not match expected schema
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public <T> T read(@NotNull CborDeserializer<T> decoder) throws UnexpectedCborException {
         return decoder.next(this);
     }
 
-    public void readAny() throws UnexpectedCborException {
+    /**
+     * Skip the whole next item. Also follows hierarchical structures (arrays, maps, tags)
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
+    public void readAny()  {
         nextToken();
-        switch (currentTokenType()) {
-            case Tag:
-                readAny();
-                break;
+        try {
+            switch (currentTokenType()) {
+                case Tag:
+                    readAny();
+                    break;
 
-            case Map:
-                if (tokenIndefiniteLength) {
-                    while (peekTokenType() != CborType.Break) {
-                        readAny();
-                        readAny();
+                case Map:
+                    if (tokenIndefiniteLength) {
+                        while (peekTokenType() != CborType.Break) {
+                            readAny();
+                            readAny();
+                        }
+                        readBreak();
+                    } else {
+                        long n = tokenArg;
+                        for (long i = 0; i < n; i++) {
+                            readAny();
+                            readAny();
+                        }
                     }
-                    readBreak();
-                } else {
-                    long n = tokenArg;
-                    for (long i = 0; i < n; i ++) {
-                        readAny();
-                        readAny();
+                    break;
+
+                case Array:
+                    if (tokenIndefiniteLength) {
+                        while (peekTokenType() != CborType.Break)
+                            readAny();
+                        readBreak();
+                    } else {
+                        long n = tokenArg;
+                        for (long i = 0; i < n; i++)
+                            readAny();
                     }
-                }
-                break;
+                    break;
 
-            case Array:
-                if (tokenIndefiniteLength) {
-                    while (peekTokenType() != CborType.Break)
-                        readAny();
-                    readBreak();
-                } else {
-                    long n = tokenArg;
-                    for (long i = 0; i < n; i ++)
-                        readAny();
-                }
-                break;
-
-            case Text:
-            case ByteString:
-                if (tokenIndefiniteLength) {
-                    while (peekTokenType() != CborType.Break)
-                        readAny();
-                    readBreak();
-                } else {
-                    long n = tokenArg;
-                    for (long i = 0; i < n; i ++)
-                        buffer.get();
-                }
-                break;
+                case Text:
+                case ByteString:
+                    if (tokenIndefiniteLength) {
+                        while (peekTokenType() != CborType.Break)
+                            readAny();
+                        readBreak();
+                    } else {
+                        long n = tokenArg;
+                        for (long i = 0; i < n; i++)
+                            buffer.get();
+                    }
+                    break;
+            }
+        } catch (NoSuchElementException ignored) {
+            throw new InvalidCborException();
         }
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a simple value
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public byte readSimple() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24)
@@ -226,6 +261,12 @@ public final class CborDecoder {
         return (byte) tokenArg;
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a unsigned integer
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public long readUInt() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 0)
@@ -233,6 +274,13 @@ public final class CborDecoder {
         return tokenArg;
     }
 
+    /**
+     * Read a signed or unsigned integer.
+     * @throws UnexpectedCborException next token is not a signed or unsigned integer
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public long readInt() throws UnexpectedCborException {
         nextToken();
         return switch (tokenMajorType) {
@@ -243,6 +291,12 @@ public final class CborDecoder {
         };
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a 16-bit float
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public short readFloat16() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 25)
@@ -250,6 +304,12 @@ public final class CborDecoder {
         return (short) tokenArg;
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a 32-bit float
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public float readFloat32() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 26)
@@ -257,6 +317,12 @@ public final class CborDecoder {
         return Float.intBitsToFloat((int) tokenArg);
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a 64-bit float
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public double readFloat64() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo != 27)
@@ -264,6 +330,12 @@ public final class CborDecoder {
         return Double.longBitsToDouble(tokenArg);
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not a tag
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public long readTag() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 6)
@@ -271,6 +343,12 @@ public final class CborDecoder {
         return tokenArg;
     }
 
+    /**
+     * @throws UnexpectedCborException next token is not true or false
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
     public boolean readBool() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 7 || tokenAdditionalInfo > 24 || !(tokenArg == 20 || tokenArg == 21))
@@ -279,7 +357,11 @@ public final class CborDecoder {
     }
 
     /**
-     * expects simple value = 23
+     * simple value = 23
+     * @throws UnexpectedCborException next token is not of type undefined
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
      */
     public void readUndefined() throws UnexpectedCborException {
         nextToken();
@@ -288,7 +370,11 @@ public final class CborDecoder {
     }
 
     /**
-     * expects simple value = 22
+     * simple value = 22
+     * @throws UnexpectedCborException next token is not of type null
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
      */
     public void readNull() throws UnexpectedCborException {
         nextToken();
@@ -296,16 +382,29 @@ public final class CborDecoder {
             throw new UnexpectedCborException.UnexpectedType(CborType.Undefined.name(), currentTokenType());
     }
 
-    public void readBreak() throws UnexpectedCborException {
+    /**
+     * @throws UnexpectedCborException next token is not of type break
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     */
+    private void readBreak() throws UnexpectedCborException {
         nextToken();
         if (currentTokenType() != CborType.Break)
             throw new UnexpectedCborException.UnexpectedType(CborType.Break.name(), currentTokenType());
     }
 
     /**
-     * @return the known length of the array, or [Long.MIN_VALUE] if it's an indefinite length array (terminated by break)
+     * @return the known length of the array<br>
+     *         or {@code Long.MIN_VALUE} if it's an indefinite length array (terminated by break)
+     *
+     * @see #readArray(CborDeserializer)
+     * @see #readArrayManual()
+     *
+     * @throws UnexpectedCborException next token is not an array
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
      */
-    public long readArray() throws UnexpectedCborException {
+    private long readArrayRaw() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 4)
             throw new UnexpectedCborException.UnexpectedType(CborType.Array.name(), currentTokenType());
@@ -315,9 +414,17 @@ public final class CborDecoder {
     }
 
     /**
-     * @return the known number of pairs in the map, or [Long.MIN_VALUE] if it's an indefinite length map (terminated by break)
+     * @return the known number of pairs in the map,<br>
+     *         or {@code Long.MIN_VALUE} if it's an indefinite length map (terminated by break)
+     *
+     * @see #readMap(CborDeserializer, CborDeserializer, BiFunction)
+     * @see #readMapManual()
+     *
+     * @throws UnexpectedCborException next token is not a map
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
      */
-    public long readMap() throws UnexpectedCborException {
+    private long readMapRaw() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 5)
             throw new UnexpectedCborException.UnexpectedType(CborType.Map.name(), currentTokenType());
@@ -326,11 +433,51 @@ public final class CborDecoder {
         return tokenArg;
     }
 
-    private final IndefiniteByteArrayReader indefiniteByteArrayReader = new IndefiniteByteArrayReader();
-    private final FiniteByteArrayReader finiteByteArrayReader = new FiniteByteArrayReader();
+    private final IndefiniteByteReader indefiniteByteArrayReader = new IndefiniteByteReader();
+    private final FiniteByteReader finiteByteArrayReader = new FiniteByteReader();
 
+    /**
+     * Read a byte string (byte array)
+     * <p>All items must be consumed!
+     * <br><br>
+     *
+     * Example:
+     * <pre><code>
+     *     var reader = decoder.readByteString();
+     *     var buf = new byte[512];
+     *     while (reader.hasNext()) {
+     *         var num = reader.read(buf);
+     *         ...
+     *     }
+     * </code></pre>
+     * <br>
+     *
+     * It can also be converted to an input stream:
+     * <pre><code>
+     *     var reader = decoder.readByteString();
+     *     reader.inputStream().transferTo(somewhere);
+     *     reader.skipToEnd(); // make sure all bytes have been read
+     * </code></pre>
+     * <br>
+     *
+     * But it is also an Iterator, so you can do:
+     * <pre><code>
+     *     var items = new OnceIterable(decoder.readByteString());
+     *     for (byte b : items) {
+     *         ...
+     *     }
+     * </code></pre>
+     *
+     * @see dev.vxcc.tinyjcbor.serde.CborPrim#BYTES Deserializer for directly reading a {@code byte[]}
+     *
+     * @throws UnexpectedCborException next token is not a byte string
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.0.0-rc.1
+     */
     @CheckReturnValue
-    public ByteArrayReader readByteString() throws UnexpectedCborException {
+    public ByteReader readByteString() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 2)
             throw new UnexpectedCborException.UnexpectedType(CborType.ByteString.name(), currentTokenType());
@@ -342,10 +489,30 @@ public final class CborDecoder {
         return finiteByteArrayReader;
     }
 
-    private final ByteArrayReaderInputStream byteArrayReaderInputStream = new ByteArrayReaderInputStream();
+    private final ByteReaderInputStream byteReaderInputStream = new ByteReaderInputStream();
 
     /**
-     * @see dev.vxcc.tinyjcbor.serde.CborPrim#STRING Decoder for directly reading a {@code String}
+     * Read a text (utf8 string) as chars
+     * <p>All items must be consumed!
+     * <br><br>
+     *
+     * Example:
+     * <pre><code>
+     *     var reader = decoder.readText();
+     *     var out = new StringWriter();
+     *     reader.transferTo(out);
+     *     String read = out.toString();
+     * </code></pre>
+     * <br>
+     *
+     * @see dev.vxcc.tinyjcbor.serde.CborPrim#STRING Deserializer for directly reading a {@code String}
+     * @see #readTextUtf8()
+     *
+     * @throws UnexpectedCborException next token is not text (utf8 string)
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.0.0-rc.1
      */
     @CheckReturnValue
     public Reader readText() throws UnexpectedCborException {
@@ -353,7 +520,7 @@ public final class CborDecoder {
         if (tokenMajorType != 3)
             throw new UnexpectedCborException.UnexpectedType(CborType.Text.name(), currentTokenType());
 
-        ByteArrayReader byteReader;
+        ByteReader byteReader;
         if (tokenIndefiniteLength) {
             indefiniteByteArrayReader.init(3, CborType.Text.name());
             byteReader = indefiniteByteArrayReader;
@@ -365,14 +532,79 @@ public final class CborDecoder {
         return new InputStreamReader(byteReader.inputStream(), StandardCharsets.UTF_8);
     }
 
-    public final static class ByteArrayReaderInputStream extends InputStream {
-        private ByteArrayReader reader;
+    /**
+     * Read a text (utf8 string) as utf8 bytes.
+     * <p>All items must be consumed!
+     * <br><br>
+     *
+     * Example:
+     * <pre><code>
+     *     var reader = decoder.readTextUtf8();
+     *     var buf = new byte[512];
+     *     while (reader.hasNext()) {
+     *         var num = reader.read(buf);
+     *         ...
+     *     }
+     * </code></pre>
+     * <br>
+     *
+     * It can also be converted to an input stream:
+     * <pre><code>
+     *     var reader = decoder.readTextUtf8();
+     *     reader.inputStream().transferTo(somewhere);
+     *     reader.skipToEnd(); // make sure all bytes have been read
+     * </code></pre>
+     * <br>
+     *
+     * But it is also an Iterator, so you can do:
+     * <pre><code>
+     *     var items = new OnceIterable(decoder.readTextUtf8());
+     *     for (byte b : items) {
+     *         ...
+     *     }
+     * </code></pre>
+     *
+     * @see dev.vxcc.tinyjcbor.serde.CborPrim#STRING Decoder for directly reading a String
+     * @see #readText()
+     *
+     * @throws UnexpectedCborException next token is not text (utf8 string)
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.0.0-rc.2
+     */
+    @CheckReturnValue
+    public ByteReader readTextUtf8() throws UnexpectedCborException {
+        nextToken();
+        if (tokenMajorType != 3)
+            throw new UnexpectedCborException.UnexpectedType(CborType.Text.name(), currentTokenType());
 
-        private void init(@NotNull ByteArrayReader reader) {
+        if (tokenIndefiniteLength) {
+            indefiniteByteArrayReader.init(3, CborType.Text.name());
+            return indefiniteByteArrayReader;
+        } else {
+            finiteByteArrayReader.init(tokenArg);
+            return finiteByteArrayReader;
+        }
+    }
+
+    /**
+     * A {@code InputStream} wrapper for {@code ByteReader}
+     *
+     * Functions in here can throw {@code InvalidCborException}
+     *
+     * @see ByteReader#inputStream()
+     *
+     * @since 1.0.0-rc.1
+     */
+    public final static class ByteReaderInputStream extends InputStream {
+        private ByteReader reader;
+
+        private void init(@NotNull CborDecoder.ByteReader reader) {
             this.reader = reader;
         }
 
-        private ByteArrayReaderInputStream() {}
+        private ByteReaderInputStream() {}
 
         @Override
         public int read() {
@@ -399,34 +631,85 @@ public final class CborDecoder {
         }
     }
 
-    public sealed abstract class ByteArrayReader implements Iterator<Byte> permits FiniteByteArrayReader, IndefiniteByteArrayReader {
+    /**
+     * A reader for reading byte strings and text.
+     *
+     * <p>Can be converted to a {@code InputStream} using {@code #inputStream()}
+     * <p>All available bytes must be read!
+     * <p>Do not keep references to this when you call the next function on CborDecoder
+     *
+     * @see #readByteString()
+     * @see #readText()
+     *
+     * @since 1.0.0-rc.1
+     */
+    public sealed abstract class ByteReader implements Iterator<Byte> permits FiniteByteReader, IndefiniteByteReader {
+        /**
+         * For better performance, use {@code #nextByte()} instead
+         * @see #nextByte()
+         * @throws NoSuchElementException when there is no next byte
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         @Override
         public final Byte next() {
             return nextByte();
         }
 
+        /**
+         * @throws NoSuchElementException when there is no next byte
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public abstract byte nextByte();
 
-        /** reads up to [length] next bytes into [dst] at [offset], and returns how many bytes have been read */
+        /**
+         * reads up to [length] next bytes into [dst] at [offset], and returns how many bytes have been read
+         * @return how many bytes were read
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
+        @CheckReturnValue
         public abstract int next(byte[] dst, int offset, int length);
 
-        /** reads up to [length] next bytes into [dst] */
+        /**
+         * reads up to [length] next bytes into [dst]
+         * @return how many bytes were read
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
+        @CheckReturnValue
         public final int next(byte[] dst) {
             return next(dst, 0, dst.length);
         }
 
-        /** this will only return 0 if the array is at the end! otherwise will always return at least 1 */
+        /**
+         * @return 0 if the array is at the end, otherwise at least 1
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public int guessRemainingLength() {
             return 1;
         }
 
+        /**
+         * Read all remaining bytes
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public void skipToEnd() {
             byte[] buf = new byte[512];
-            while (hasNext()) {
-                next(buf);
-            }
+            //noinspection StatementWithEmptyBody
+            while ((next(buf)) != 0);
         }
 
+        /**
+         * Read all remaining bytes into the destination buffer
+         * @see #readAll(ByteBuffer)
+         * @see #readAll()
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public ByteBuffer readAll(ByteBuffer dst) {
             byte[] buf = new byte[512];
             while (hasNext()) {
@@ -435,6 +718,13 @@ public final class CborDecoder {
             return dst;
         }
 
+        /**
+         * Read all remaining bytes into the given output stream
+         * @see #readAll(ByteBuffer)
+         * @see #readAll()
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public void readAll(OutputStream dst) throws IOException {
             byte[] buf = new byte[512];
             while (hasNext()) {
@@ -442,6 +732,13 @@ public final class CborDecoder {
             }
         }
 
+        /**
+         * Read all remaining bytes into an array
+         * @see #readAll(ByteBuffer)
+         * @see #readAll()
+         * @throws InvalidCborException data is not valid CBOR
+         * @since 1.0.0-rc.1
+         */
         public byte[] readAll() {
             var out = new ByteArrayOutputStream();
             byte[] buf = new byte[512];
@@ -451,14 +748,18 @@ public final class CborDecoder {
             return out.toByteArray();
         }
 
+        /**
+         * Create an input stream wrapping this reader
+         * @since 1.0.0-rc.1
+         */
         @CheckReturnValue
-        public final ByteArrayReaderInputStream inputStream() {
-            byteArrayReaderInputStream.init(this);
-            return byteArrayReaderInputStream;
+        public final ByteReaderInputStream inputStream() {
+            byteReaderInputStream.init(this);
+            return byteReaderInputStream;
         }
     }
 
-    private final class FiniteByteArrayReader extends ByteArrayReader {
+    private final class FiniteByteReader extends ByteReader {
         private long remaining;
 
         public void init(long length) {
@@ -498,7 +799,7 @@ public final class CborDecoder {
         }
     }
 
-    private final class IndefiniteByteArrayReader extends ByteArrayReader {
+    private final class IndefiniteByteReader extends ByteReader {
         private boolean _hasFinite;
         private int majorType;
         @Nullable private String expectedName;
@@ -511,7 +812,7 @@ public final class CborDecoder {
             this._end = false;
         }
 
-        private @Nullable FiniteByteArrayReader chunkReader() {
+        private @Nullable CborDecoder.FiniteByteReader chunkReader() {
             if (_end)
                 return null;
             if (_hasFinite && finiteByteArrayReader.hasNext())
@@ -567,10 +868,18 @@ public final class CborDecoder {
      *     arr.next(); var b = decoder.readInt();
      *     arr.end();
      * </code></pre>
+     *
+     * @see #readArray(CborDeserializer)
+     *
+     * @throws UnexpectedCborException next token is not an array
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.0.0-rc.1
      */
     @CheckReturnValue
     public @NotNull ManualReader readArrayManual() throws UnexpectedCborException {
-        long length = readArray();
+        long length = readArrayRaw();
         manualReader.init(length);
         return manualReader;
     }
@@ -612,18 +921,25 @@ public final class CborDecoder {
      *     }
      *     map.end();
      * </code></pre>
+     *
+     * @see #readMap(CborDeserializer, CborDeserializer, BiFunction)
+     *
+     * @throws UnexpectedCborException next token is not a map
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.0.0-rc.1
      */
     @CheckReturnValue
     public @NotNull ManualReader readMapManual() throws UnexpectedCborException {
-        long length = readMap();
+        long length = readMapRaw();
         manualReader.init(length);
         return manualReader;
     }
 
     /**
      * Helper for manually reading a map or an array.
-     * <p>
-     * If you are reading a map, only call {@code next()} once per key-value pair.
+     * <p>If you are reading a map, only call {@code next()} once per key-value pair.
      *
      * <pre><code>
      *     var arr = decoder.readArrayManual();
@@ -632,6 +948,11 @@ public final class CborDecoder {
      *     // assert that the map ends here
      *     arr.end();
      * </code></pre>
+     *
+     * @see #readArrayManual()
+     * @see #readMapManual()
+     *
+     * @since 1.0.0-rc.1
      */
     public class ManualReader {
         private long length;
@@ -681,11 +1002,20 @@ public final class CborDecoder {
     }
 
     /**
-     * reads the whole array, including the Break, if indefinite
+     * Read an array
+     * <p>All items in the returned iterator must be consumed!
+     *
+     * @throws UnexpectedCborException next token is not an array
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @see #readArrayManual()
+     *
+     * @since 1.0.0-rc.1
      */
     @CheckReturnValue
     public <T> @NotNull Iterator<T> readArray(@NotNull CborDeserializer<T> elementDecoder) throws UnexpectedCborException {
-        long length = readArray();
+        long length = readArrayRaw();
         if (length == Long.MIN_VALUE) {
             return new IndefiniteLengthArrayIterator<>(elementDecoder);
         }
@@ -693,13 +1023,22 @@ public final class CborDecoder {
     }
 
     /**
-     * reads the whole map, including the Break, if indefinite
+     * Reads a map
+     * <p>All items in the returned iterator must be consumed!
+     *
+     * @throws UnexpectedCborException next token is not a map
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @see #readMapManual()
+     *
+     * @since 1.0.0-rc.1
      */
     @CheckReturnValue
     public <K, V, T> @NotNull Iterator<T> readMap(@NotNull CborDeserializer<K> keyDecoder,
                                                   @NotNull CborDeserializer<V> valDecoder,
                                                   @NotNull BiFunction<K, V, T> makeItem) throws UnexpectedCborException {
-        long length = readMap();
+        long length = readMapRaw();
         if (length == Long.MIN_VALUE) {
             return new IndefiniteLengthMapIterator<>(keyDecoder, valDecoder, makeItem);
         }
@@ -707,7 +1046,15 @@ public final class CborDecoder {
     }
 
     /**
-     * reads the whole map, including the Break, if indefinite
+     * Call a function for each element in the map
+     *
+     * @throws UnexpectedCborException next token is not a map
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     *
+     * @see #readMapManual()
+     *
+     * @since 1.0.0-rc.1
      */
     public <K, V> void readMap(@NotNull CborDeserializer<K> keyDecoder,
                                @NotNull CborDeserializer<V> valDecoder,

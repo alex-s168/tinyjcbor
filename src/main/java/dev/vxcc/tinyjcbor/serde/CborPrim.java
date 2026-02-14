@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringWriter;
 
 public final class CborPrim {
     /**
@@ -167,9 +168,9 @@ public final class CborPrim {
         }
     }, CborEncoder::writeFloat64);
 
-    public static final CborSerDe<byte @NotNull []> BYTE_ARRAY =
+    public static final CborSerDe<byte @NotNull []> BYTES =
         new CborSerDe<>(
-            new CborByteArrayDecoder<>(CborDecoder.ByteArrayReader::readAll),
+            new CborByteArrayDecoder<>(CborDecoder.ByteReader::readAll),
             CborEncoder::writeByteString);
 
     public static final CborSerDe<@NotNull String> STRING =
@@ -178,12 +179,8 @@ public final class CborPrim {
                 @Override
                 protected @NotNull String process(Reader x) {
                     try {
-                        var out = new StringBuilder();
-                        var buf = new char[512];
-                        int n;
-                        while ((n = x.read(buf)) > 0) {
-                            out.append(buf, 0, n);
-                        }
+                        var out = new StringWriter();
+                        x.transferTo(out);
                         return out.toString();
                     } catch (IOException e) {
                         throw new RuntimeException(e); /* how even */
@@ -191,4 +188,18 @@ public final class CborPrim {
                 }
             },
             CborEncoder::writeText);
+
+    /**
+     * @since 1.0.0-rc.2
+     */
+    public static final CborSerDe<byte @NotNull[]> RAW_UTF8_STRING =
+        new CborSerDe<>(
+                new PrimitiveDecoder<byte @NotNull[]>(new CborType[] { CborType.Text }) {
+                    @Override
+                    public byte @NotNull[] next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
+                        var reader = decoder.readTextUtf8();
+                        return reader.readAll();
+                    }
+                },
+            CborEncoder::writeTextUtf8);
 }
