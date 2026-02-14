@@ -24,6 +24,12 @@
         <url>https://vxcc.dev/</url>
     </organization>
 
+    <scm>
+        <connection>scm:git:https://github.com/alex-s168/tinyjcbor</connection>
+        <developerConnection>scm:git:https://github.com/alex-s168/tinyjcbor</developerConnection>
+        <url>https://github.com/alex-s168/tinyjcbor</url>
+    </scm>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -146,6 +152,15 @@
               <version>3.1.1</version>
               <configuration>
               </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version>
+                <configuration>
+                    <failOnWarnings>false</failOnWarnings>
+                </configuration>
             </plugin>
         </plugins>
     </build>
