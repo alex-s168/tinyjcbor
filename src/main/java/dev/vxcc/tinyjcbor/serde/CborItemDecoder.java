@@ -8,9 +8,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-    @FunctionalInterface
-    public interface CborItemDecoder<T> {
-        T next(@NotNull CborDecoder decoder) throws UnexpectedCborException;
+@FunctionalInterface
+public interface CborItemDecoder<T> {
+    T next(@NotNull CborDecoder decoder) throws UnexpectedCborException;
+
     default boolean mightAccept(@NotNull CborType type) {
         return true;
     }
