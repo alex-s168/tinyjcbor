@@ -8,6 +8,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
+/**
+ * A decoder that efficiently goes through all the input decoders, and returns the first match.
+ * It is considered a match when a decoder does not throw {@code UnexpectedCborException}
+ *
+ * @param <T> The type that all decoders extend
+ *
+ * @since 1.0.0-rc.1
+ */
 public final class CborVariantDecoder<T> implements CborDeserializer<T> {
     @NotNull private final Object[] decoders;
     @NotNull private final Map<CborType, CborDeserializer<?>[]> byType;
@@ -56,7 +64,7 @@ public final class CborVariantDecoder<T> implements CborDeserializer<T> {
     }
 
     @Override
-    public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
+    public T next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
         var type = decoder.peekTokenType();
         var possible = byType.get(type);
         if (possible != null) {

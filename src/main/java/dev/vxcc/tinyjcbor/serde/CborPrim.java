@@ -11,10 +11,15 @@ import java.io.IOException;
 import java.io.Reader;
 
 public final class CborPrim {
+    /**
+     * A CBOR deserializer that accepts only the given types (but does not check!)
+     *
+     * @since 1.0.0-rc.1
+     */
     public static abstract class PrimitiveDecoder<T> implements CborDeserializer<T> {
-        private final @NotNull CborType @NotNull [] accepts;
+        private final @NotNull CborType @NotNull[] accepts;
 
-        public PrimitiveDecoder(@NotNull CborType @NotNull [] accepts) {
+        public PrimitiveDecoder(@NotNull CborType @NotNull[] accepts) {
             this.accepts = accepts;
         }
 
@@ -31,7 +36,10 @@ public final class CborPrim {
             return !mightAccept(type);
         }
 
-        public @NotNull CborType @NotNull [] getTypes() {
+        /**
+         * @return Array of types this deserializer accepts
+         */
+        public @NotNull CborType @NotNull[] getTypes() {
             return accepts;
         }
     }
