@@ -1,6 +1,7 @@
 package dev.vxcc.tinyjcbor;
 
 import dev.vxcc.tinyjcbor.serde.CborDeserializer;
+import dev.vxcc.tinyjcbor.util.CborValue;
 import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -176,6 +177,16 @@ public final class CborDecoder {
         var ty = currentTokenType();
         reset(peekSnapshot);
         return ty;
+    }
+
+    /**
+     * @throws NoSuchElementException there is no next item
+     * @throws UnexpectedCborException CBOR data in buffer does not match expected schema
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.0.0-rc.1
+     */
+    public @NotNull CborValue read() throws UnexpectedCborException {
+        return CborValue.CODEC.next(this);
     }
 
     /**

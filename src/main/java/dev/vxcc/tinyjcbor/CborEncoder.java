@@ -1,5 +1,7 @@
 package dev.vxcc.tinyjcbor;
 
+import dev.vxcc.tinyjcbor.serde.CborSerializer;
+import dev.vxcc.tinyjcbor.util.CborValue;
 import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,6 +27,22 @@ public final class CborEncoder {
      */
     public CborEncoder(@NotNull ByteOrder byteOrder, @NotNull OutputStream out) {
         this.unsafe = new CborRawEncoder(byteOrder, out);
+    }
+
+    /**
+     * @throws IOException when writing to the {@code OutputStream} fails
+     * @since 1.0.0-rc.3
+     */
+    public <T> void write(@NotNull CborSerializer<T> ser, T value) throws IOException {
+        ser.encode(this, value);
+    }
+
+    /**
+     * @throws IOException when writing to the {@code OutputStream} fails
+     * @since 1.0.0-rc.3
+     */
+    public void write(CborValue val) throws IOException {
+        CborValue.CODEC.encode(this, val);
     }
 
     /**

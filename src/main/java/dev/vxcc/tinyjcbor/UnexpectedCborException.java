@@ -7,6 +7,45 @@ import org.jetbrains.annotations.Nullable;
  * The decoded CBOR data didn't conform to the expected schema
  */
 public abstract class UnexpectedCborException extends RuntimeException {
+    public static class Custom extends UnexpectedCborException {
+        @NotNull public final String msg;
+
+        public Custom(@NotNull String msg) {
+            this.msg = msg;
+        }
+
+        @Override
+        public String toString() {
+            return msg;
+        }
+    }
+
+    public static class NotMemberOfEnum extends UnexpectedCborException {
+        @NotNull public final String got;
+
+        public NotMemberOfEnum(@NotNull String got) {
+            this.got = got;
+        }
+
+        @Override
+        public String toString() {
+            return "'" + got + "' is not a member of the expected enum!";
+        }
+    }
+
+    public static class MissingMapField extends UnexpectedCborException {
+        @NotNull public final String field;
+
+        public MissingMapField(@NotNull String field) {
+            this.field = field;
+        }
+
+        @Override
+        public String toString() {
+            return "Required field not found in CBOR map: '" + field + "'!";
+        }
+    }
+
     public static class WrongTag extends UnexpectedCborException {
         @Nullable public final Long expected;
         public final long got;
