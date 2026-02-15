@@ -1,14 +1,14 @@
 package dev.vxcc.tinyjcbor.util;
 
-import dev.vxcc.tinyjcbor.CborDecoder;
-import dev.vxcc.tinyjcbor.CborEncoder;
-import dev.vxcc.tinyjcbor.UnexpectedCborException;
+import dev.vxcc.tinyjcbor.*;
 import dev.vxcc.tinyjcbor.serde.CborDeserializer;
 import dev.vxcc.tinyjcbor.serde.CborPrim;
 import dev.vxcc.tinyjcbor.serde.CborSerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.*;
 
 /**
@@ -24,6 +24,22 @@ public sealed abstract class CborValue {
 
     @Override
     public abstract String toString();
+
+    public abstract CborType type();
+
+    /**
+     * Converts this value into a decoder, so it can be deserialized.
+     * <p>This is currently inefficient!
+     *
+     * @since 1.0.0-rc.3
+     */
+    public final CborDecoder asDecoder() {
+        var order = ByteOrder.BIG_ENDIAN;
+        var arr = Cbor.encode(order, this, CODEC);
+        var buf = ByteBuffer.wrap(arr);
+        buf.order(order);
+        return new CborDecoder(buf);
+    }
 
     public static final class Unsigned extends CborValue {
         public final long value;
@@ -47,6 +63,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Unsigned u)
                 return value == u.value;
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.UnsignedInteger;
         }
     }
 
@@ -73,6 +94,11 @@ public sealed abstract class CborValue {
                 return value == u.value;
             return false;
         }
+
+        @Override
+        public CborType type() {
+            return value < 0 ? CborType.NegativeInteger : CborType.UnsignedInteger;
+        }
     }
 
     public static final class Float16 extends CborValue {
@@ -97,6 +123,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Float16 u)
                 return value == u.value;
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.Float16;
         }
     }
 
@@ -123,6 +154,11 @@ public sealed abstract class CborValue {
                 return value == u.value;
             return false;
         }
+
+        @Override
+        public CborType type() {
+            return CborType.Float32;
+        }
     }
 
     public static final class Float64 extends CborValue {
@@ -147,6 +183,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Float64 u)
                 return value == u.value;
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.Float64;
         }
     }
 
@@ -173,6 +214,11 @@ public sealed abstract class CborValue {
                 return Objects.deepEquals(value, u.value);
             return false;
         }
+
+        @Override
+        public CborType type() {
+            return CborType.Text;
+        }
     }
 
     public static final class Bytes extends CborValue {
@@ -197,6 +243,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Bytes u)
                 return Arrays.equals(value, u.value);
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.ByteString;
         }
     }
 
@@ -223,6 +274,11 @@ public sealed abstract class CborValue {
                 return Objects.deepEquals(value, u.value);
             return false;
         }
+
+        @Override
+        public CborType type() {
+            return CborType.Array;
+        }
     }
 
     public static final class Dict extends CborValue {
@@ -247,6 +303,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Dict u)
                 return Objects.deepEquals(value, u.value);
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.Map;
         }
     }
 
@@ -274,6 +335,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Tag u)
                 return tag == u.tag && Objects.equals(value, u.value);
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.Tag;
         }
     }
 
@@ -303,6 +369,11 @@ public sealed abstract class CborValue {
                 return value == u.value;
             return false;
         }
+
+        @Override
+        public CborType type() {
+            return value ? CborType.True : CborType.False;
+        }
     }
 
     public static final class Null extends CborValue {
@@ -324,6 +395,11 @@ public sealed abstract class CborValue {
         public boolean equals(Object obj) {
             return obj instanceof Null;
         }
+
+        @Override
+        public CborType type() {
+            return CborType.Null;
+        }
     }
 
     public static final class Undefined extends CborValue {
@@ -344,6 +420,11 @@ public sealed abstract class CborValue {
         @Override
         public boolean equals(Object obj) {
             return obj instanceof Undefined;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.Undefined;
         }
     }
 
@@ -369,6 +450,11 @@ public sealed abstract class CborValue {
             if (obj instanceof Simple u)
                 return value == u.value;
             return false;
+        }
+
+        @Override
+        public CborType type() {
+            return CborType.SimpleValue;
         }
     }
 

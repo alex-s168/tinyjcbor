@@ -37,7 +37,6 @@ public class Cbor {
         var e = new CborEncoder(byteOrder, out);
         try {
             encoder.encode(e, value);
-            out.flush();
         } catch (IOException ex) { /* how even */
             throw new RuntimeException(ex);
         }
