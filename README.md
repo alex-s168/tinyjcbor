@@ -13,7 +13,7 @@ maven {
 }
 
 dependencies {
-    implementation("dev.vxcc:tinyjcbor:1.0.0-rc.2")
+    implementation("dev.vxcc:tinyjcbor:1.0.0-rc.3")
 }
 ```
 
@@ -29,7 +29,7 @@ dependencies {
     <dependency>
       <groupId>dev.vxcc</groupId>
       <artifactId>tinyjcbor</artifactId>
-      <version>1.0.0-rc.2</version>
+      <version>1.0.0-rc.3</version>
     </dependency>
 </dependencies>
 ```
