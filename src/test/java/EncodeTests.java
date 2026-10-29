@@ -112,4 +112,18 @@ public class EncodeTests {
             t.end();
         }));
     }
+
+    @Test
+    public void nestedIndefiniteContainers() {
+        byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, null, (e, ignored) -> {
+            var outer = e.writeArray();
+            var inner = e.writeMap();
+            e.writeText("k");
+            e.writeUnsigned(1);
+            inner.end();
+            outer.end();
+        });
+        // [_ {_ "k": 1}]
+        assertEquals("9fbf616b01ffff", HexFormat.of().formatHex(b));
+    }
 }
