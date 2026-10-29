@@ -352,7 +352,7 @@ public sealed abstract class CborValue {
 
         @Override
         public String toString() {
-            return value ? "true" : "false";
+            return Boolean.toString(value);
         }
 
         public static final Bool TRUE = new Bool(true);
@@ -486,13 +486,14 @@ public sealed abstract class CborValue {
                         arr.next();
                         out.add(next(decoder));
                     }
+                    arr.end();
                     yield new Arr(out);
                 }
                 case Map -> {
-                    var out = new HashMap<CborValue, CborValue>();
-                    var arr = decoder.readArrayManual();
-                    while (arr.hasNext()) {
-                        arr.next();
+                    var out = new LinkedHashMap<CborValue, CborValue>();
+                    var map = decoder.readMapManual();
+                    while (map.hasNext()) {
+                        map.next();
                         var k = next(decoder);
                         var v = next(decoder);
                         out.put(k, v);
@@ -508,19 +509,17 @@ public sealed abstract class CborValue {
         public void encode(@NotNull CborEncoder encoder, CborValue value) throws IOException {
             switch (value) {
                 case Arr arr -> {
-                    var w = encoder.writeArray();
+                    encoder.writeArray(arr.value.size());
                     for (var x : arr.value) {
                         encode(encoder, x);
                     }
-                    w.end();
                 }
                 case Dict dict -> {
-                    var w = encoder.writeArray();
+                    encoder.writeMap(dict.value.size());
                     for (var x : dict.value.entrySet()) {
                         encode(encoder, x.getKey());
                         encode(encoder, x.getValue());
                     }
-                    w.end();
                 }
                 case Bytes bytes -> encoder.writeByteString(bytes.value);
                 case Float16 n -> encoder.writeFloat16(n.value);

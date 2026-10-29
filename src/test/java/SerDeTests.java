@@ -2,6 +2,7 @@ import dev.vxcc.tinyjcbor.Cbor;
 import dev.vxcc.tinyjcbor.CborDecoder;
 import dev.vxcc.tinyjcbor.CborEncoder;
 import dev.vxcc.tinyjcbor.serde.*;
+import dev.vxcc.tinyjcbor.util.CborValue;
 import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
 
@@ -266,5 +267,33 @@ public class SerDeTests {
         var dec = Cbor.decode(buf, CborPrim.STRING);
         assertEquals("hello world", dec);
         assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void cborValueMapRoundTrip() {
+        var m = new LinkedHashMap<CborValue, CborValue>();
+        m.put(new CborValue.Str("a"), new CborValue.Unsigned(1));
+        m.put(new CborValue.Str("b"), new CborValue.Unsigned(2));
+        var value = new CborValue.Dict(m);
+
+        byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, value, CborValue.CODEC);
+        // {"a": 1, "b": 2}
+        assertEquals("a2616101616202", HexFormat.of().formatHex(b));
+        assertEquals(value, Cbor.decode(ByteBuffer.wrap(b)));
+    }
+
+    @Test
+    public void cborValueDecodesMap() {
+        // {"a": 1}
+        var v = Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("a1616101")));
+        assertEquals(new CborValue.Dict(Map.of(new CborValue.Str("a"), new CborValue.Unsigned(1))), v);
+    }
+
+    @Test
+    public void cborValueConsumesBreakOfIndefiniteArray() {
+        // [_ 1] 2
+        var d = new CborDecoder(ByteBuffer.wrap(HexFormat.of().parseHex("9f01ff02")));
+        assertEquals(new CborValue.Arr(List.of(new CborValue.Unsigned(1))), d.read());
+        assertEquals(2, d.readUInt());
     }
 }
