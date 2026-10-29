@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HexFormat;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,5 +63,30 @@ public class EncodeTests {
         assertEquals((byte) 0x99, buf.get());
         assertEquals((byte) 0xff, buf.get());
         assertFalse(buf.hasRemaining());
+    }
+
+    @Test
+    public void encodeArgument24() {
+        var hex = HexFormat.of();
+        // RFC 8949 Appendix A: 24 -> 0x18 0x18
+        assertEquals("1818", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 24L, CborPrim.UNSIGNED)));
+        // a 24 character string must start with 0x78 0x18
+        var s = "abcdefghijklmnopqrstuvwx";
+        byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, s, CborPrim.STRING);
+        assertEquals(26, b.length);
+        assertEquals(s, Cbor.decode(ByteBuffer.wrap(b), CborPrim.STRING));
+    }
+
+    @Test
+    public void encodeArgumentsCanonically() {
+        var hex = HexFormat.of();
+        // RFC 8949 Appendix A / preferred serialization (section 4.1)
+        assertEquals("1864", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 100L, CborPrim.UNSIGNED)));
+        assertEquals("18c8", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 200L, CborPrim.UNSIGNED)));
+        assertEquals("18ff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 255L, CborPrim.UNSIGNED)));
+        assertEquals("199c40", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 40000L, CborPrim.UNSIGNED)));
+        assertEquals("19ffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 65535L, CborPrim.UNSIGNED)));
+        assertEquals("1affffffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 0xFFFFFFFFL, CborPrim.UNSIGNED)));
+        assertEquals("3903e7", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, -1000L, CborPrim.SIGNED)));
     }
 }

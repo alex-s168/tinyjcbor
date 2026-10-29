@@ -60,19 +60,19 @@ public final class CborRawEncoder {
     }
 
     private void writeTokenWithArg(int major, long arg) throws IOException {
-        if (arg < 0 || arg > Integer.MAX_VALUE) {
+        if (Long.compareUnsigned(arg, 0xffffffffL) > 0) {
             writeTokenHeader(major, 27);
             writeLong(arg);
         }
-        else if (arg > Short.MAX_VALUE) {
+        else if (Long.compareUnsigned(arg, 0xffffL) > 0) {
             writeTokenHeader(major, 26);
             writeInt((int) arg);
         }
-        else if (arg > Byte.MAX_VALUE) {
+        else if (Long.compareUnsigned(arg, 0xffL) > 0) {
             writeTokenHeader(major, 25);
             writeShort((short) arg);
         }
-        else if (arg > 24) {
+        else if (Long.compareUnsigned(arg, 24) >= 0) {
             writeTokenHeader(major, 24);
             out.write((int) arg);
         } else {
