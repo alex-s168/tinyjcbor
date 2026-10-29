@@ -128,11 +128,15 @@ public final class CborRawEncoder {
         writeTokenWithArg(0, x);
     }
 
+    public void writeRawNegative(long raw) throws IOException {
+        writeTokenWithArg(1, raw);
+    }
+
     public void writeSInt(long x) throws IOException {
         if (x >= 0) {
             writeUInt(x);
         } else {
-            writeTokenWithArg(1, -x - 1);
+            writeRawNegative(-x - 1);
         }
     }
 }

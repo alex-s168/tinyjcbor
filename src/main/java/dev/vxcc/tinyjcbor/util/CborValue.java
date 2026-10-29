@@ -41,16 +41,21 @@ public sealed abstract class CborValue {
         return new CborDecoder(buf);
     }
 
-    public static final class Unsigned extends CborValue {
+    /**
+     * A positive, 64-bit, unsigned integer.
+     *
+     * @since 1.1.0
+     */
+    public static final class Positive extends CborValue {
         public final long value;
 
-        public Unsigned(long value) {
+        public Positive(long value) {
             this.value = value;
         }
 
         @Override
         public String toString() {
-            return Long.toString(value);
+            return Long.toUnsignedString(value);
         }
 
         @Override
@@ -60,44 +65,44 @@ public sealed abstract class CborValue {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Unsigned u)
+            if (obj instanceof Positive u)
                 return value == u.value;
             return false;
         }
 
         @Override
         public CborType type() {
-            return CborType.UnsignedInteger;
+            return CborType.PositiveInteger;
         }
     }
 
-    public static final class Signed extends CborValue {
-        public final long value;
+    public static final class Negative extends CborValue {
+        public final CborNegativeInt value;
 
-        public Signed(long value) {
+        public Negative(CborNegativeInt value) {
             this.value = value;
         }
 
         @Override
         public String toString() {
-            return Long.toString(value);
+            return value.toString();
         }
 
         @Override
         public int hashCode() {
-            return Long.hashCode(value);
+            return value.hashCode();
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Signed u)
-                return value == u.value;
+            if (obj instanceof Negative u)
+                return value.equals(u.value);
             return false;
         }
 
         @Override
         public CborType type() {
-            return value < 0 ? CborType.NegativeInteger : CborType.UnsignedInteger;
+            return CborType.NegativeInteger;
         }
     }
 
@@ -464,8 +469,8 @@ public sealed abstract class CborValue {
         @Override
         public CborValue next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
             return switch (decoder.peekTokenType()) {
-                case UnsignedInteger -> new Unsigned(decoder.readUInt());
-                case NegativeInteger -> new Signed(decoder.readInt());
+                case PositiveInteger -> new Positive(decoder.readUInt());
+                case NegativeInteger -> new Negative(decoder.readNegativeInt());
                 case SimpleValue -> new Simple(decoder.readSimple());
                 case False, True -> new Bool(decoder.readBool());
                 case Null -> Null.VALUE;
@@ -526,8 +531,8 @@ public sealed abstract class CborValue {
                 case Float16 n -> encoder.writeFloat16(n.value);
                 case Float32 n -> encoder.writeFloat32(n.value);
                 case Float64 n -> encoder.writeFloat64(n.value);
-                case Signed signed -> encoder.writeSigned(signed.value);
-                case Unsigned unsigned -> encoder.writeUnsigned(unsigned.value);
+                case Positive i -> encoder.writeUnsigned(i.value);
+                case Negative i -> encoder.writeNegative(i.value);
                 case Str str -> encoder.writeText(str.value);
                 case Tag tag -> {
                     encoder.writeTag(tag.tag);

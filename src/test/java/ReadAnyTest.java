@@ -163,7 +163,7 @@ public class ReadAnyTest {
         var buf = ByteBuffer.wrap(Cbor.encode(
                 ByteOrder.BIG_ENDIAN,
                 data,
-                new CborMapEncoder<>(CborPrim.STRING, CborPrim.UNSIGNED)
+                new CborMapEncoder<>(CborPrim.STRING, CborPrim.POSITIVE)
         ));
         new CborDecoder(buf).readAny();
         assertEquals(0, buf.remaining());
@@ -179,7 +179,7 @@ public class ReadAnyTest {
         var buf = ByteBuffer.wrap(Cbor.encode(
                 ByteOrder.BIG_ENDIAN,
                 data,
-                new CborMapEncoder<>(CborPrim.STRING, CborPrim.UNSIGNED)
+                new CborMapEncoder<>(CborPrim.STRING, CborPrim.POSITIVE)
         ));
 
         new CborDecoder(buf).readAny();

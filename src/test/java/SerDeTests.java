@@ -93,12 +93,12 @@ public class SerDeTests {
         var buf = ByteBuffer.wrap(Cbor.encode(
             ByteOrder.BIG_ENDIAN,
             data,
-            new CborMapEncoder<>(CborPrim.STRING, CborPrim.UNSIGNED)
+            new CborMapEncoder<>(CborPrim.STRING, CborPrim.POSITIVE)
         ));
         var dec = Cbor.decode(buf,
                 new CborMapDecoder<>(
                         MapConstructor.mapDowncast(HashMap::new),
-                        CborPrim.STRING, CborPrim.UNSIGNED)
+                        CborPrim.STRING, CborPrim.POSITIVE)
                 );
         assertEquals(0, buf.remaining());
         assertEquals(data.entrySet(), dec.entrySet());
@@ -114,20 +114,20 @@ public class SerDeTests {
         var buf = ByteBuffer.wrap(Cbor.encode(
                 ByteOrder.BIG_ENDIAN,
                 data,
-                new CborMapEncoder<>(CborPrim.STRING, CborPrim.UNSIGNED)
+                new CborMapEncoder<>(CborPrim.STRING, CborPrim.POSITIVE)
         ));
 
         var decoder = new CborDecoder(buf);
         var map = decoder.readMapManual();
         map.next();
         assertEquals("some", decoder.read(CborPrim.STRING));
-        assertEquals(1L, decoder.readInt());
+        assertEquals(1L, decoder.readJavaLong());
         map.next();
         assertEquals("data", decoder.read(CborPrim.STRING));
-        assertEquals(2L, decoder.readInt());
+        assertEquals(2L, decoder.readJavaLong());
         map.next();
         assertEquals("here", decoder.read(CborPrim.STRING));
-        assertEquals(1240124L, decoder.readInt());
+        assertEquals(1240124L, decoder.readJavaLong());
         map.end();
 
         assertEquals(0, buf.remaining());
@@ -152,13 +152,13 @@ public class SerDeTests {
         var map = decoder.readMapManual();
         map.next();
         assertEquals("some", decoder.read(CborPrim.STRING));
-        assertEquals(1L, decoder.readInt());
+        assertEquals(1L, decoder.readJavaLong());
         map.next();
         assertEquals("data", decoder.read(CborPrim.STRING));
-        assertEquals(2L, decoder.readInt());
+        assertEquals(2L, decoder.readJavaLong());
         map.next();
         assertEquals("here", decoder.read(CborPrim.STRING));
-        assertEquals(1240124L, decoder.readInt());
+        assertEquals(1240124L, decoder.readJavaLong());
         map.end();
 
         assertEquals(0, buf.remaining());
@@ -272,8 +272,8 @@ public class SerDeTests {
     @Test
     public void cborValueMapRoundTrip() {
         var m = new LinkedHashMap<CborValue, CborValue>();
-        m.put(new CborValue.Str("a"), new CborValue.Unsigned(1));
-        m.put(new CborValue.Str("b"), new CborValue.Unsigned(2));
+        m.put(new CborValue.Str("a"), new CborValue.Positive(1));
+        m.put(new CborValue.Str("b"), new CborValue.Positive(2));
         var value = new CborValue.Dict(m);
 
         byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, value, CborValue.CODEC);
@@ -286,14 +286,14 @@ public class SerDeTests {
     public void cborValueDecodesMap() {
         // {"a": 1}
         var v = Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("a1616101")));
-        assertEquals(new CborValue.Dict(Map.of(new CborValue.Str("a"), new CborValue.Unsigned(1))), v);
+        assertEquals(new CborValue.Dict(Map.of(new CborValue.Str("a"), new CborValue.Positive(1))), v);
     }
 
     @Test
     public void cborValueConsumesBreakOfIndefiniteArray() {
         // [_ 1] 2
         var d = new CborDecoder(ByteBuffer.wrap(HexFormat.of().parseHex("9f01ff02")));
-        assertEquals(new CborValue.Arr(List.of(new CborValue.Unsigned(1))), d.read());
+        assertEquals(new CborValue.Arr(List.of(new CborValue.Positive(1))), d.read());
         assertEquals(2, d.readUInt());
     }
 }

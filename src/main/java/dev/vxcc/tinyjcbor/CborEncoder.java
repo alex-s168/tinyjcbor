@@ -65,6 +65,27 @@ public final class CborEncoder {
     }
 
     /**
+     * Write a negative integer
+     * @throws IOException when writing to the {@code OutputStream} fails
+     * @since 1.1.0
+     */
+    public void writeNegative(CborNegativeInt i) throws IOException {
+        unsafe.writeRawNegative(i._raw);
+    }
+
+    /**
+     * Write a negative integer
+     * @throws IOException when writing to the {@code OutputStream} fails
+     * @since 1.1.0
+     */
+    public void writeInt(CborInt i) throws IOException {
+        if (i._negative)
+            unsafe.writeRawNegative(i._raw);
+        else
+            unsafe.writeUInt(i._raw);
+    }
+
+    /**
      * Write a CBOR simple value
      * @param b a byte
      * @throws IOException when writing to the {@code OutputStream} fails

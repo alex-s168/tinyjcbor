@@ -16,7 +16,7 @@ public class EncodeTests {
             ByteOrder.BIG_ENDIAN,
             List.of(-2L, 27315L),
             new CborFixedTagEncoder<>(4,
-                new CborCollectionArrayEncoder<>(CborPrim.SIGNED))
+                new CborCollectionArrayEncoder<>(CborPrim.JAVA_SIGNED))
         ));
 
         assertEquals((byte) 0xc4, buf.get());
@@ -69,7 +69,7 @@ public class EncodeTests {
     public void encodeArgument24() {
         var hex = HexFormat.of();
         // RFC 8949 Appendix A: 24 -> 0x18 0x18
-        assertEquals("1818", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 24L, CborPrim.UNSIGNED)));
+        assertEquals("1818", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 24L, CborPrim.POSITIVE)));
         // a 24 character string must start with 0x78 0x18
         var s = "abcdefghijklmnopqrstuvwx";
         byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, s, CborPrim.STRING);
@@ -81,13 +81,13 @@ public class EncodeTests {
     public void encodeArgumentsCanonically() {
         var hex = HexFormat.of();
         // RFC 8949 Appendix A / preferred serialization (section 4.1)
-        assertEquals("1864", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 100L, CborPrim.UNSIGNED)));
-        assertEquals("18c8", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 200L, CborPrim.UNSIGNED)));
-        assertEquals("18ff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 255L, CborPrim.UNSIGNED)));
-        assertEquals("199c40", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 40000L, CborPrim.UNSIGNED)));
-        assertEquals("19ffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 65535L, CborPrim.UNSIGNED)));
-        assertEquals("1affffffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 0xFFFFFFFFL, CborPrim.UNSIGNED)));
-        assertEquals("3903e7", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, -1000L, CborPrim.SIGNED)));
+        assertEquals("1864", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 100L, CborPrim.POSITIVE)));
+        assertEquals("18c8", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 200L, CborPrim.POSITIVE)));
+        assertEquals("18ff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 255L, CborPrim.POSITIVE)));
+        assertEquals("199c40", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 40000L, CborPrim.POSITIVE)));
+        assertEquals("19ffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 65535L, CborPrim.POSITIVE)));
+        assertEquals("1affffffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 0xFFFFFFFFL, CborPrim.POSITIVE)));
+        assertEquals("3903e7", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, -1000L, CborPrim.JAVA_SIGNED)));
     }
 
     @Test

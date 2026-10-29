@@ -1,9 +1,6 @@
 package dev.vxcc.tinyjcbor.serde;
 
-import dev.vxcc.tinyjcbor.CborDecoder;
-import dev.vxcc.tinyjcbor.CborEncoder;
-import dev.vxcc.tinyjcbor.CborType;
-import dev.vxcc.tinyjcbor.UnexpectedCborException;
+import dev.vxcc.tinyjcbor.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,25 +53,56 @@ public final class CborPrim {
         }
     }, CborEncoder::writeBool);
 
-    public static final CborSerDe<@NotNull Long> SIGNED =
+    /** Note that CBOR can represent **65** bit 2s complement integers, so not all CBOR integers can be decoded with this function! */
+    public static final CborSerDe<@NotNull Long> JAVA_SIGNED =
         new CborSerDe<>(
-            new PrimitiveDecoder<@NotNull Long>(new CborType[]{ CborType.UnsignedInteger, CborType.NegativeInteger })
+            new CborDeserializer<@NotNull Long>()
     {
         @Override
+        public boolean mightAccept(@NotNull CborType type) {
+            return type == CborType.PositiveInteger || type == CborType.NegativeInteger;
+        }
+
+        @Override
+        public boolean neverAccepts(@NotNull CborType type) {
+            return !mightAccept(type);
+        }
+
+        @Override
         public Long next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
-            return decoder.readInt();
+            return decoder.readJavaLong();
         }
     }, CborEncoder::writeSigned);
 
-    public static final CborSerDe<@NotNull Long> UNSIGNED =
+    public static final CborSerDe<@NotNull Long> POSITIVE =
         new CborSerDe<>(
-            new PrimitiveDecoder<@NotNull Long>(new CborType[]{ CborType.UnsignedInteger })
+            new PrimitiveDecoder<@NotNull Long>(new CborType[]{ CborType.PositiveInteger })
     {
         @Override
         public Long next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
             return decoder.readUInt();
         }
     }, CborEncoder::writeUnsigned);
+
+    public static final CborSerDe<@NotNull CborNegativeInt> NEGATIVE =
+        new CborSerDe<>(
+                new PrimitiveDecoder<@NotNull CborNegativeInt>(new CborType[]{ CborType.NegativeInteger })
+    {
+        @Override
+        public CborNegativeInt next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
+            return decoder.readNegativeInt();
+        }
+    }, CborEncoder::writeNegative);
+
+    public static final CborSerDe<@NotNull CborInt> INT =
+        new CborSerDe<>(
+            new PrimitiveDecoder<@NotNull CborInt>(new CborType[]{ CborType.PositiveInteger, CborType.NegativeInteger })
+    {
+        @Override
+        public CborInt next(@NotNull CborDecoder decoder) throws UnexpectedCborException {
+            return decoder.readInt();
+        }
+    }, CborEncoder::writeInt);
 
     public static final CborSerDe<@Nullable Void> NULL =
         new CborSerDe<>(

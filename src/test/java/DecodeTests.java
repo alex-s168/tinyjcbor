@@ -31,7 +31,7 @@ public class DecodeTests {
         buf.putShort((short) 0x6ab3);
         buf.flip();
 
-        var item = new CborFixedTagDecoder<>(4, new CborArrayDecoder<>(Collectors.toList(), CborPrim.SIGNED));
+        var item = new CborFixedTagDecoder<>(4, new CborArrayDecoder<>(Collectors.toList(), CborPrim.JAVA_SIGNED));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
         assertEquals(2, x.size());
@@ -81,8 +81,8 @@ public class DecodeTests {
         buf.flip();
 
         var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
-                CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
+                CborPrim.POSITIVE,
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.POSITIVE)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -113,8 +113,8 @@ public class DecodeTests {
         buf.flip();
 
         var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
-                new LessInfoDecoder<>(CborPrim.UNSIGNED),
-                new LessInfoDecoder<>(new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED))
+                new LessInfoDecoder<>(CborPrim.POSITIVE),
+                new LessInfoDecoder<>(new CborArrayDecoder<>(Collectors.toList(), CborPrim.POSITIVE))
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -146,8 +146,8 @@ public class DecodeTests {
         buf.flip();
 
         var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
-                CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
+                CborPrim.POSITIVE,
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.POSITIVE)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -178,8 +178,8 @@ public class DecodeTests {
         buf.flip();
 
         var item = new CborArrayDecoder<>(Collectors.toList(), new CborVariantDecoder<>(List.of(
-                CborPrim.UNSIGNED,
-                new CborArrayDecoder<>(Collectors.toList(), CborPrim.UNSIGNED)
+                CborPrim.POSITIVE,
+                new CborArrayDecoder<>(Collectors.toList(), CborPrim.POSITIVE)
         )));
         var x = Cbor.decode(buf, item);
         assertEquals(0, buf.remaining());
@@ -216,7 +216,7 @@ public class DecodeTests {
                 MapConstructor.map(HashMap::new),
                 CborPrim.STRING,
                 new CborVariantDecoder<>(List.of(
-                    CborPrim.SIGNED,
+                    CborPrim.JAVA_SIGNED,
                     CborPrim.BOOL
                 )));
         var x = Cbor.decode(buf, item);
@@ -234,7 +234,7 @@ public class DecodeTests {
         buf.put((byte) 0x04);
         buf.flip();
 
-        var item = CborPrim.UNSIGNED;
+        var item = CborPrim.POSITIVE;
         var seq = new CborSeq(buf);
         assertTrue(seq.hasNext());
         assertEquals(2, seq.next(item));
@@ -253,7 +253,7 @@ public class DecodeTests {
         buf.put((byte) 0x03);
         buf.flip();
 
-        CborDeserializer<Long> item = CborDeserializer.chain(CborPrim.UNSIGNED, CborPrim.UNSIGNED, Long::sum);
+        CborDeserializer<Long> item = CborDeserializer.chain(CborPrim.POSITIVE, CborPrim.POSITIVE, Long::sum);
         var seq = new CborSeq(buf);
         assertTrue(seq.hasNext());
         assertEquals(2 + 3, seq.next(item));
@@ -267,7 +267,7 @@ public class DecodeTests {
         buf.put((byte) 0x02);
         buf.flip();
 
-        CborDeserializer<Integer> item = CborDeserializer.map(CborPrim.UNSIGNED, x -> (Integer) (int) (long) x);
+        CborDeserializer<Integer> item = CborDeserializer.map(CborPrim.POSITIVE, x -> (Integer) (int) (long) x);
         var seq = new CborSeq(buf);
         assertTrue(seq.hasNext());
         assertEquals(2, seq.next(item));
@@ -289,7 +289,7 @@ public class DecodeTests {
         assertEquals(200, new CborDecoder(ByteBuffer.wrap(hex.parseHex("18c8"))).readUInt());
         assertEquals(65535, new CborDecoder(ByteBuffer.wrap(hex.parseHex("19ffff"))).readUInt());
         assertEquals(0xFFFFFFFFL, new CborDecoder(ByteBuffer.wrap(hex.parseHex("1affffffff"))).readUInt());
-        assertEquals(-201, new CborDecoder(ByteBuffer.wrap(hex.parseHex("38c8"))).readInt());
+        assertEquals(-201, new CborDecoder(ByteBuffer.wrap(hex.parseHex("38c8"))).readJavaLong());
         // text string of length 200
         var s = Cbor.decode(ByteBuffer.wrap(hex.parseHex("78c8" + "61".repeat(200))), CborPrim.STRING);
         assertEquals("a".repeat(200), s);
@@ -342,9 +342,23 @@ public class DecodeTests {
         // [[1], [2]]
         var v = Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("8281018102")));
         assertEquals(new CborValue.Arr(List.of(
-                new CborValue.Arr(List.of(new CborValue.Unsigned(1))),
-                new CborValue.Arr(List.of(new CborValue.Unsigned(2))))), v);
+                new CborValue.Arr(List.of(new CborValue.Positive(1))),
+                new CborValue.Arr(List.of((CborValue) new CborValue.Positive(2))))), v);
+    }
+
+    @Test
+    public void readIntRejectsNegativeIntegerOutOfLongRange() {
+        var hex = HexFormat.of();
+        // -2^64 does not fit into a long
+        var d = new CborDecoder(ByteBuffer.wrap(hex.parseHex("3bffffffffffffffff")));
+        assertThrows(UnexpectedCborException.class, d::readJavaLong);
+        // -2^63 - 1 does not fit either
+        var d2 = new CborDecoder(ByteBuffer.wrap(hex.parseHex("3b8000000000000000")));
+        assertThrows(UnexpectedCborException.class, d2::readJavaLong);
+        // -2^63 does
+        assertEquals(Long.MIN_VALUE, new CborDecoder(ByteBuffer.wrap(hex.parseHex("3b7fffffffffffffff"))).readJavaLong());
     }
 
     // TODO: test tagged decoder
+    // TODO: test negative and int better
 }

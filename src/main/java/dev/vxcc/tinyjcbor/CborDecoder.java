@@ -151,7 +151,7 @@ public final class CborDecoder {
 
     private @NotNull CborType currentTokenType() {
         return switch (tokenMajorType) {
-            case 0 -> CborType.UnsignedInteger;
+            case 0 -> CborType.PositiveInteger;
             case 1 -> CborType.NegativeInteger;
             case 2 -> CborType.ByteString;
             case 3 -> CborType.Text;
@@ -242,7 +242,7 @@ public final class CborDecoder {
                         readBreak();
                     } else {
                         long n = tokenArg;
-                        for (long i = 0; i < n; i++) {
+                        for (long i = 0; Long.compareUnsigned(i, n) < 0; i++) {
                             readAny();
                             readAny();
                         }
@@ -256,7 +256,7 @@ public final class CborDecoder {
                         readBreak();
                     } else {
                         long n = tokenArg;
-                        for (long i = 0; i < n; i++)
+                        for (long i = 0; Long.compareUnsigned(i, n) < 0; i++)
                             readAny();
                     }
                     break;
@@ -269,7 +269,7 @@ public final class CborDecoder {
                         readBreak();
                     } else {
                         long n = tokenArg;
-                        for (long i = 0; i < n; i++)
+                        for (long i = 0; Long.compareUnsigned(i, n) < 0; i++)
                             buffer.get();
                     }
                     break;
@@ -293,7 +293,7 @@ public final class CborDecoder {
     }
 
     /**
-     * @throws UnexpectedCborException next token is not a unsigned integer
+     * @throws UnexpectedCborException next token is not an unsigned integer
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
      * @since 1.0.0-rc.1
@@ -301,24 +301,75 @@ public final class CborDecoder {
     public long readUInt() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 0)
-            throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name(), currentTokenType());
+            throw new UnexpectedCborException.UnexpectedType(CborType.PositiveInteger.name(), currentTokenType());
         return tokenArg;
     }
 
     /**
-     * Read a signed or unsigned integer.
+     * @return The 64-bit negative integer, as positive value.
+     * @throws UnexpectedCborException next token is not a negative integer
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.1.0
+     */
+    public long readRawNegativeInt() throws UnexpectedCborException {
+        nextToken();
+        if (tokenMajorType != 1)
+            throw new UnexpectedCborException.UnexpectedType(CborType.NegativeInteger.name(), currentTokenType());
+        return tokenArg;
+    }
+
+    /**
+     * @return The 64-bit negative integer, as positive value.
+     * @throws UnexpectedCborException next token is not a negative integer
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.1.0
+     */
+    public @NotNull CborNegativeInt readNegativeInt() throws UnexpectedCborException {
+        return CborNegativeInt.fromRaw(readRawNegativeInt());
+    }
+
+    /**
+     * @return The 64-bit negative integer, as positive value.
+     * @throws UnexpectedCborException next token is not a negative integer
+     * @throws NoSuchElementException there is no next item
+     * @throws InvalidCborException data is not valid CBOR
+     * @since 1.1.0
+     */
+    public @NotNull CborInt readInt() throws UnexpectedCborException {
+        nextToken();
+        return switch (tokenMajorType) {
+            case 0 -> CborInt.fromUnsignedLong(tokenArg);
+            case 1 -> CborInt.from(CborNegativeInt.fromRaw(tokenArg));
+            default ->
+                    throw new UnexpectedCborException.UnexpectedType("Expected CBOR integer", currentTokenType());
+        };
+    }
+
+    /**
+     * Read a signed or unsigned integer. Note that CBOR can represent **65** bit 2s complement integers, so not all CBOR integers can be decoded with this function!
      * @throws UnexpectedCborException next token is not a signed or unsigned integer
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
-     * @since 1.0.0-rc.1
+     * @see readInt
+     * @since 1.1.0
      */
-    public long readInt() throws UnexpectedCborException {
+    public long readJavaLong() throws UnexpectedCborException {
         nextToken();
         return switch (tokenMajorType) {
-            case 0 -> tokenArg;
-            case 1 -> -1 - tokenArg;
+            case 0 -> {
+                if (tokenArg < 0)
+                    throw new UnexpectedCborException.Custom("Expected Java 'long' (64 bit), but this CBOR integer is only representable in 65 bit");
+                yield tokenArg;
+            }
+            case 1 -> {
+                if (tokenArg < 0)
+                    throw new UnexpectedCborException.Custom("Expected Java 'long' (64 bit), but this CBOR integer is only representable in 65 bit");
+                yield -1 - tokenArg;
+            }
             default ->
-                    throw new UnexpectedCborException.UnexpectedType(CborType.UnsignedInteger.name() + " or " + CborType.NegativeInteger.name(), currentTokenType());
+                    throw new UnexpectedCborException.UnexpectedType("Expected CBOR integer (that can fit into Java 64-bit 'long')", currentTokenType());
         };
     }
 
@@ -1257,7 +1308,7 @@ public final class CborDecoder {
     /**
      * Calling this is not required. It only makes sure no CBOR item is still open
      *
-     * @since 1.0.0-rc.4
+     * @since 1.1.0
      */
     public void assertCborEnd() {
         if (stillTrackingManualReaderDepth())

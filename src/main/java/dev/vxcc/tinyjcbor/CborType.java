@@ -3,7 +3,7 @@ package dev.vxcc.tinyjcbor;
 /** CBOR Major Type */
 public enum CborType {
     /** positive integer */
-    UnsignedInteger,
+    PositiveInteger,
     /** integer that is definitely negative */
     NegativeInteger,
     /** byte array */
