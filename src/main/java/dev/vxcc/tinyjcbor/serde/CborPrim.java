@@ -154,7 +154,7 @@ public final class CborPrim {
 
     public static final CborSerDe<@NotNull Double> MOST_DOUBLE =
         new CborSerDe<>(
-            new PrimitiveDecoder<@NotNull Double>(new CborType[]{ CborType.Float16, CborType.Float32, CborType.Float32 })
+            new PrimitiveDecoder<@NotNull Double>(new CborType[]{ CborType.Float16, CborType.Float32, CborType.Float64 })
     {
         @Override
         public Double next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {

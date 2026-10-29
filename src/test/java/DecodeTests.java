@@ -1,5 +1,6 @@
 import dev.vxcc.tinyjcbor.Cbor;
 import dev.vxcc.tinyjcbor.CborSeq;
+import dev.vxcc.tinyjcbor.CborType;
 import dev.vxcc.tinyjcbor.serde.*;
 import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -272,6 +274,14 @@ public class DecodeTests {
         assertEquals(2, seq.next(item));
         assertFalse(seq.hasNext());
         assertEquals(0, buf.remaining());
+    }
+
+    @Test
+    public void mostDoubleAcceptsFloat64() {
+        assertTrue(CborPrim.MOST_DOUBLE.mightAccept(CborType.Float64));
+        // CborVariantDecoder relies on mightAccept
+        var dec = new CborVariantDecoder<Object>(List.of(CborPrim.MOST_DOUBLE, CborPrim.STRING));
+        assertEquals(1.1, Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("fb3ff199999999999a")), dec));
     }
 
     // TODO: test tagged decoder
