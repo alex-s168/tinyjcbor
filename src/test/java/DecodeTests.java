@@ -1,7 +1,4 @@
-import dev.vxcc.tinyjcbor.Cbor;
-import dev.vxcc.tinyjcbor.CborDecoder;
-import dev.vxcc.tinyjcbor.CborSeq;
-import dev.vxcc.tinyjcbor.CborType;
+import dev.vxcc.tinyjcbor.*;
 import dev.vxcc.tinyjcbor.serde.*;
 import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
@@ -295,6 +292,15 @@ public class DecodeTests {
         // text string of length 200
         var s = Cbor.decode(ByteBuffer.wrap(hex.parseHex("78c8" + "61".repeat(200))), CborPrim.STRING);
         assertEquals("a".repeat(200), s);
+    }
+
+    @Test
+    public void truncatedInputThrowsInvalidCbor() {
+        var hex = HexFormat.of();
+        assertThrows(InvalidCborException.class, () -> new CborDecoder(ByteBuffer.wrap(hex.parseHex("19ff"))).readUInt());
+        assertThrows(InvalidCborException.class, () -> new CborDecoder(ByteBuffer.wrap(hex.parseHex("1b00000000"))).readUInt());
+        assertThrows(InvalidCborException.class, () -> Cbor.decode(ByteBuffer.wrap(hex.parseHex("6461")), CborPrim.STRING));
+        assertThrows(InvalidCborException.class, () -> Cbor.decode(ByteBuffer.wrap(hex.parseHex("44aabb")), CborPrim.BYTES));
     }
 
     // TODO: test tagged decoder

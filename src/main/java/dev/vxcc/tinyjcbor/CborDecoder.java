@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
@@ -104,31 +105,44 @@ public final class CborDecoder {
         tokenArg = 0;
         tokenIndefiniteLength = false;
 
-        switch (tokenAdditionalInfo) {
-            case 24: tokenArg = buffer.get() & 0xffL; break;
-            case 25: tokenArg = buffer.getShort() & 0xffffL; break;
-            case 26: tokenArg = buffer.getInt() & 0xffffffffL; break;
-            case 27: tokenArg = buffer.getLong(); break;
-            case 28:
-            case 29:
-            case 30: /* reserved */
-                throw new InvalidCborException();
-            case 31: /* no arg */
-                switch (tokenMajorType) {
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 5:
-                        tokenIndefiniteLength = true;
-                        break;
-                    case 7: break;
-                    default:
-                        throw new InvalidCborException();
-                }
-                break;
-            default: /* less than 24 */
-                tokenArg = tokenAdditionalInfo;
-                break;
+        try {
+            switch (tokenAdditionalInfo) {
+                case 24:
+                    tokenArg = buffer.get() & 0xffL;
+                    break;
+                case 25:
+                    tokenArg = buffer.getShort() & 0xffffL;
+                    break;
+                case 26:
+                    tokenArg = buffer.getInt() & 0xffffffffL;
+                    break;
+                case 27:
+                    tokenArg = buffer.getLong();
+                    break;
+                case 28:
+                case 29:
+                case 30: /* reserved */
+                    throw new InvalidCborException();
+                case 31: /* no arg */
+                    switch (tokenMajorType) {
+                        case 2:
+                        case 3:
+                        case 4:
+                        case 5:
+                            tokenIndefiniteLength = true;
+                            break;
+                        case 7:
+                            break;
+                        default:
+                            throw new InvalidCborException();
+                    }
+                    break;
+                default: /* less than 24 */
+                    tokenArg = tokenAdditionalInfo;
+                    break;
+            }
+        } catch (BufferUnderflowException e) {
+            throw  new InvalidCborException();
         }
     }
 
@@ -786,6 +800,8 @@ public final class CborDecoder {
         public byte nextByte() {
             if (remaining == 0)
                 throw new NoSuchElementException();
+            if (!buffer.hasRemaining())
+                throw new InvalidCborException();
             remaining -= 1;
             return buffer.get();
         }
@@ -798,7 +814,11 @@ public final class CborDecoder {
             if (read > remaining)
                 read = guessRemainingLength();
             remaining -= read;
-            buffer.get(dst, offset, read);
+            try {
+                buffer.get(dst, offset, read);
+            } catch (BufferUnderflowException e) {
+                throw new InvalidCborException();
+            }
             return read;
         }
 
