@@ -468,8 +468,9 @@ public final class CborDecoder {
      * @throws UnexpectedCborException next token is not of type break
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
+     * @since 1.1.0
      */
-    private void readBreak() throws UnexpectedCborException {
+    public void readBreak() throws UnexpectedCborException {
         nextToken();
         if (currentTokenType() != CborType.Break)
             throw new UnexpectedCborException.UnexpectedType(CborType.Break.name(), currentTokenType());
@@ -485,8 +486,10 @@ public final class CborDecoder {
      * @throws UnexpectedCborException next token is not an array
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.1.0
      */
-    private long readArrayRaw() throws UnexpectedCborException {
+    public long readArrayRaw() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 4)
             throw new UnexpectedCborException.UnexpectedType(CborType.Array.name(), currentTokenType());
@@ -505,8 +508,10 @@ public final class CborDecoder {
      * @throws UnexpectedCborException next token is not a map
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
+     *
+     * @since 1.1.0
      */
-    private long readMapRaw() throws UnexpectedCborException {
+    public long readMapRaw() throws UnexpectedCborException {
         nextToken();
         if (tokenMajorType != 5)
             throw new UnexpectedCborException.UnexpectedType(CborType.Map.name(), currentTokenType());
