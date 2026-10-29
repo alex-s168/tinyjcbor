@@ -294,7 +294,7 @@ public final class CborEncoder {
             if (end)
                 throw new IllegalStateException();
             unsafe.writeBreak();
-            end = false;
+            end = true;
         }
     }
 
@@ -359,7 +359,7 @@ public final class CborEncoder {
             if (end)
                 throw new IllegalStateException();
             unsafe.writeBreak();
-            end = false;
+            end = true;
         }
     }
 
@@ -404,8 +404,21 @@ public final class CborEncoder {
         unsafe.writeBeginFinite(5, numPairs);
     }
 
-    @NotNull
-    private final CborEncoder.IndefiniteWriter indefiniteWriter = new IndefiniteWriter();
+    // (unsigned) number of currently open IndefiniteWriter
+    //
+    // Since we are based, if this value is unsigned int max val, we stop tracking depth, to allow more nesting
+    private int indefiniteWriterDepth = 0;
+
+    private boolean stillTrackingIndefiniteWriterDepth() {
+        return Integer.compareUnsigned(indefiniteWriterDepth, -Integer.MAX_VALUE) < 0;
+    }
+
+    private @NotNull IndefiniteWriter newIndefiniteWriter() {
+        if (stillTrackingIndefiniteWriterDepth()) {
+            this.indefiniteWriterDepth += 1;
+        }
+        return new IndefiniteWriter(indefiniteWriterDepth);
+    }
 
     /**
      * Begin writing an array of currently unknown length
@@ -426,10 +439,9 @@ public final class CborEncoder {
      * @since 1.0.0-rc.1
      */
     @CheckReturnValue
-    public IndefiniteWriter writeArray() throws IOException {
+    public @NotNull IndefiniteWriter writeArray() throws IOException {
         unsafe.writeBeginIndefinite(4);
-        indefiniteWriter.init();
-        return indefiniteWriter;
+        return newIndefiniteWriter();
     }
 
     /**
@@ -452,10 +464,9 @@ public final class CborEncoder {
      * @since 1.0.0-rc.1
      */
     @CheckReturnValue
-    public IndefiniteWriter writeMap() throws IOException {
+    public @NotNull IndefiniteWriter writeMap() throws IOException {
         unsafe.writeBeginIndefinite(5);
-        indefiniteWriter.init();
-        return indefiniteWriter;
+        return newIndefiniteWriter();
     }
 
     /**
@@ -463,15 +474,26 @@ public final class CborEncoder {
      * @since 1.0.0-rc.1
      */
     public final class IndefiniteWriter {
-        private boolean end = true;
+        private boolean end;
+        private final int depth;
 
-        private void init() {
-            if (!end)
-                throw new IllegalStateException("Forgot to call IndefiniteWriter#end()");
+        private IndefiniteWriter(int depth) {
             end = false;
+            this.depth = depth;
         }
 
-        private IndefiniteWriter() {}
+        /**
+         * We recommend to call this before each item you write.
+         * This checks that no nesting error was made during writing.
+         *
+         * @since 1.0.0-rc.3
+         */
+        public void assertIsTop() {
+            if (end)
+                throw new IllegalStateException("IndefiniteWriter used after end()");
+            if (this.depth != indefiniteWriterDepth)
+                throw new IllegalStateException("Forgot to call IndefiniteWriter#end on a nested writer");
+        }
 
         /**
          * @throws IllegalStateException when end has already been called
@@ -479,10 +501,15 @@ public final class CborEncoder {
          * @since 1.0.0-rc.1
          */
         public void end() throws IOException {
-            if (end)
-                throw new IllegalStateException();
+            assertIsTop();
+
             unsafe.writeBreak();
-            end = false;
+
+            end = true;
+            if (indefiniteWriterDepth == 0)
+                throw new IllegalStateException("IndefiniteWriter nesting is really messed up");
+            if (stillTrackingIndefiniteWriterDepth())
+                indefiniteWriterDepth -= 1;
         }
     }
 }

@@ -17,7 +17,10 @@ public class Cbor {
      * @since 1.0.0-rc.1
      */
     public static <T> T decode(@NotNull ByteBuffer buffer, @NotNull CborDeserializer<T> parser) throws InvalidCborException {
-        return new CborDecoder(buffer).read(parser);
+        var decoder = new CborDecoder(buffer);
+        var value = decoder.read(parser);
+        decoder.assertCborEnd();
+        return value;
     }
 
     /**
@@ -26,7 +29,7 @@ public class Cbor {
      * @since 1.0.0-rc.3
      */
     public static CborValue decode(@NotNull ByteBuffer buffer) throws InvalidCborException {
-        return new CborDecoder(buffer).read(CborValue.CODEC);
+        return decode(buffer, CborValue.CODEC);
     }
 
     /**

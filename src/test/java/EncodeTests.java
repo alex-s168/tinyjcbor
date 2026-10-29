@@ -89,4 +89,27 @@ public class EncodeTests {
         assertEquals("1affffffff", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, 0xFFFFFFFFL, CborPrim.UNSIGNED)));
         assertEquals("3903e7", hex.formatHex(Cbor.encode(ByteOrder.BIG_ENDIAN, -1000L, CborPrim.SIGNED)));
     }
+
+    @Test
+    public void sequentialIndefiniteItems() {
+        byte[] b = Cbor.encode(ByteOrder.BIG_ENDIAN, null, (e, ignored) -> {
+            var t1 = e.writeChunkedText();
+            t1.writeChunk("ab");
+            t1.end();
+            var t2 = e.writeChunkedText();
+            t2.writeChunk("cd");
+            t2.end();
+        });
+        // (_ "ab") (_ "cd")
+        assertEquals("7f626162ff7f626364ff", HexFormat.of().formatHex(b));
+    }
+
+    @Test
+    public void indefiniteWriterEndTwiceThrows() {
+        assertThrows(IllegalStateException.class, () -> Cbor.encode(ByteOrder.BIG_ENDIAN, null, (e, ignored) -> {
+            var t = e.writeChunkedByteString();
+            t.end();
+            t.end();
+        }));
+    }
 }

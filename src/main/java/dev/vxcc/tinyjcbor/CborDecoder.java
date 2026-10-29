@@ -52,6 +52,7 @@ public final class CborDecoder {
         private int tokenMajorType;
         private int tokenAdditionalInfo;
         private boolean tokenIndefiniteLength;
+        private int manualReaderDepth;
 
         /** Back-up the given decoder into this snapshot */
         public void from(@NotNull CborDecoder decoder) {
@@ -60,6 +61,7 @@ public final class CborDecoder {
             tokenMajorType = decoder.tokenMajorType;
             tokenAdditionalInfo = decoder.tokenAdditionalInfo;
             tokenIndefiniteLength = decoder.tokenIndefiniteLength;
+            manualReaderDepth = decoder.manualReaderDepth;
         }
     }
 
@@ -89,6 +91,7 @@ public final class CborDecoder {
         tokenMajorType = snapshot.tokenMajorType;
         tokenAdditionalInfo = snapshot.tokenAdditionalInfo;
         tokenIndefiniteLength = snapshot.tokenIndefiniteLength;
+        manualReaderDepth = snapshot.manualReaderDepth;
     }
 
     public boolean hasNext() {
@@ -215,6 +218,9 @@ public final class CborDecoder {
 
     /**
      * Skip the whole next item. Also follows hierarchical structures (arrays, maps, tags)
+     * <p>
+     * Warning: this can stack overflow. Always wrap CBOR ops in exception catching
+     *
      * @throws NoSuchElementException there is no next item
      * @throws InvalidCborException data is not valid CBOR
      * @since 1.0.0-rc.1
@@ -834,7 +840,7 @@ public final class CborDecoder {
         private boolean _hasFinite;
         private int majorType;
         @Nullable private String expectedName;
-        private boolean _end;
+        private boolean _end = true;
 
         public void init(int majorType, @Nullable String expectedName) {
             _hasFinite = false;
@@ -887,8 +893,21 @@ public final class CborDecoder {
         }
     }
 
-    @NotNull
-    private final ManualReader manualReader = new ManualReader();
+    // (unsigned) number of currently open manualreader
+    //
+    // Since we are based, if this value is unsigned int max val, we stop tracking depth, to allow more nesting
+    private int manualReaderDepth = 0;
+
+    private boolean stillTrackingManualReaderDepth() {
+        return Integer.compareUnsigned(manualReaderDepth, -Integer.MAX_VALUE) < 0;
+    }
+
+    private @NotNull ManualReader newManualReader(long length) {
+        if (stillTrackingManualReaderDepth()) {
+            this.manualReaderDepth += 1;
+        }
+        return new ManualReader(length, this.manualReaderDepth);
+    }
 
     /**
      * Helper for manually reading an array.
@@ -911,8 +930,7 @@ public final class CborDecoder {
     @CheckReturnValue
     public @NotNull ManualReader readArrayManual() throws UnexpectedCborException {
         long length = readArrayRaw();
-        manualReader.init(length);
-        return manualReader;
+        return newManualReader(length);
     }
 
     /**
@@ -964,8 +982,7 @@ public final class CborDecoder {
     @CheckReturnValue
     public @NotNull ManualReader readMapManual() throws UnexpectedCborException {
         long length = readMapRaw();
-        manualReader.init(length);
-        return manualReader;
+        return newManualReader(length);
     }
 
     /**
@@ -987,25 +1004,30 @@ public final class CborDecoder {
      */
     public class ManualReader {
         private long length;
-        private long i;
-        private boolean end = true;
+        private long i = 0;
+        private boolean ended = false;
         private int lastBufPos;
+        private final int depth;
 
         /**
          * @param length array/map num items, or Long.MIN_VALUE
          */
-        private void init(long length) {
-            if (!end)
-                throw new IllegalStateException("Forgot to call ManualReader#end");
-            this.end = false;
+        private ManualReader(long length, int depth) {
             this.length = length;
-            this.i = 0;
             this.lastBufPos = buffer.position() - 1;
+            this.depth = depth;
         }
 
-        private ManualReader() {}
+        private void assertIsTop() {
+            if (ended)
+                throw new IllegalStateException("ManualReader used after end()");
+            if (this.depth != manualReaderDepth)
+                throw new IllegalStateException("Forgot to call ManualReader#end on a nested reader");
+        }
 
         public boolean hasNext() {
+            assertIsTop();
+
             if (length == Long.MIN_VALUE)
                 return peekTokenType() != CborType.Break;
             else
@@ -1013,6 +1035,8 @@ public final class CborDecoder {
         }
 
         public void next() throws UnexpectedCborException {
+            assertIsTop();
+
             if (lastBufPos == buffer.position())
                 throw new IllegalStateException("Caller of ManualReader#next didn't read elements between two next() calls");
             lastBufPos = buffer.position();
@@ -1025,10 +1049,18 @@ public final class CborDecoder {
         }
 
         public void end() throws UnexpectedCborException {
+            assertIsTop();
+
             if (hasNext())
                 throw new UnexpectedCborException.ExpectedEndOfArray(i);
             if (length == Long.MIN_VALUE)
                 readBreak();
+
+            ended = true;
+            if (manualReaderDepth == 0)
+                throw new IllegalStateException("ManualReader nesting is really messed up");
+            if (stillTrackingManualReaderDepth())
+                manualReaderDepth -= 1;
         }
     }
 
@@ -1188,9 +1220,12 @@ public final class CborDecoder {
     }
 
     private final class FiniteLengthMapIterator<K, V, T> implements Iterator<T> {
-        @NotNull private final CborDeserializer<K> keyDecoder;
-        @NotNull private final CborDeserializer<V> valDecoder;
-        @NotNull private final BiFunction<K, V, T> makeItem;
+        @NotNull
+        private final CborDeserializer<K> keyDecoder;
+        @NotNull
+        private final CborDeserializer<V> valDecoder;
+        @NotNull
+        private final BiFunction<K, V, T> makeItem;
         private long remaining;
 
         public FiniteLengthMapIterator(@NotNull CborDeserializer<K> keyDecoder,
@@ -1217,5 +1252,18 @@ public final class CborDecoder {
             V v = valDecoder.next(CborDecoder.this);
             return makeItem.apply(k, v);
         }
+    }
+
+    /**
+     * Calling this is not required. It only makes sure no CBOR item is still open
+     *
+     * @since 1.0.0-rc.4
+     */
+    public void assertCborEnd() {
+        if (stillTrackingManualReaderDepth())
+            if (this.manualReaderDepth != 0)
+                throw new IllegalStateException("Open ManualReaders still exist where end() wasn't called!");
+        if (!this.indefiniteByteArrayReader._end || this.finiteByteArrayReader.remaining != 0)
+            throw new IllegalStateException("Not all CBOR items of indefinite/finite were read!");
     }
 }

@@ -16,6 +16,7 @@ public class CborIndefiniteArrayEncoder<T, C extends Iterable<T>> implements Cbo
     public void encode(@NotNull CborEncoder encoder, @NotNull C value) throws IOException {
         var wr = encoder.writeArray();
         for (var x : value) {
+            wr.assertIsTop();
             item.encode(encoder, x);
         }
         wr.end();

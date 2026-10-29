@@ -1,5 +1,6 @@
 import dev.vxcc.tinyjcbor.*;
 import dev.vxcc.tinyjcbor.serde.*;
+import dev.vxcc.tinyjcbor.util.CborValue;
 import dev.vxcc.tinyjcbor.util.MapConstructor;
 import org.junit.jupiter.api.Test;
 
@@ -301,6 +302,48 @@ public class DecodeTests {
         assertThrows(InvalidCborException.class, () -> new CborDecoder(ByteBuffer.wrap(hex.parseHex("1b00000000"))).readUInt());
         assertThrows(InvalidCborException.class, () -> Cbor.decode(ByteBuffer.wrap(hex.parseHex("6461")), CborPrim.STRING));
         assertThrows(InvalidCborException.class, () -> Cbor.decode(ByteBuffer.wrap(hex.parseHex("44aabb")), CborPrim.BYTES));
+    }
+
+    @Test
+    public void nestedManualReaders() {
+        // [[1, 2], [3]]
+        var d = new CborDecoder(ByteBuffer.wrap(HexFormat.of().parseHex("828201028103")));
+        var outer = d.readArrayManual();
+        long sum = 0;
+        while (outer.hasNext()) {
+            outer.next();
+            var inner = d.readArrayManual();
+            while (inner.hasNext()) {
+                inner.next();
+                sum += d.readUInt();
+            }
+            inner.end();
+        }
+        outer.end();
+        assertEquals(6, sum);
+        assertFalse(d.hasNext());
+    }
+
+    @Test
+    public void sequentialManualReaders() {
+        // [1] [2] as a CBOR sequence
+        var d = new CborDecoder(ByteBuffer.wrap(HexFormat.of().parseHex("81018102")));
+        for (long expected = 1; expected <= 2; expected++) {
+            var arr = d.readArrayManual();
+            arr.next();
+            assertEquals(expected, d.readUInt());
+            arr.end();
+        }
+        assertFalse(d.hasNext());
+    }
+
+    @Test
+    public void cborValueNestedArrays() {
+        // [[1], [2]]
+        var v = Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("8281018102")));
+        assertEquals(new CborValue.Arr(List.of(
+                new CborValue.Arr(List.of(new CborValue.Unsigned(1))),
+                new CborValue.Arr(List.of(new CborValue.Unsigned(2))))), v);
     }
 
     // TODO: test tagged decoder

@@ -498,6 +498,7 @@ public sealed abstract class CborValue {
                         var v = next(decoder);
                         out.put(k, v);
                     }
+                    map.end();
                     yield new Dict(out);
                 }
                 case Break -> throw new UnexpectedCborException.Custom("expected value");
