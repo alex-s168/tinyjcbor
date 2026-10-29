@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.util.NoSuchElementException;
 
 public final class CborPrim {
     /**
@@ -144,6 +145,8 @@ public final class CborPrim {
         @Override
         public Float next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
             var type = decoder.peekTokenType();
+            if (type == null)
+                throw new NoSuchElementException();
             return switch (type) {
                 case Float16 -> Float.float16ToFloat(decoder.readFloat16());
                 case Float32 -> decoder.readFloat32();
@@ -159,6 +162,8 @@ public final class CborPrim {
         @Override
         public Double next(@NotNull CborDecoder decoder) throws UnexpectedCborException, dev.vxcc.tinyjcbor.InvalidCborException {
             var type = decoder.peekTokenType();
+            if (type == null)
+                throw new NoSuchElementException();
             return switch (type) {
                 case Float16 -> (double) Float.float16ToFloat(decoder.readFloat16());
                 case Float32 -> (double) decoder.readFloat32();
