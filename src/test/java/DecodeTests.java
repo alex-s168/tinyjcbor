@@ -1,4 +1,5 @@
 import dev.vxcc.tinyjcbor.Cbor;
+import dev.vxcc.tinyjcbor.CborDecoder;
 import dev.vxcc.tinyjcbor.CborSeq;
 import dev.vxcc.tinyjcbor.CborType;
 import dev.vxcc.tinyjcbor.serde.*;
@@ -282,6 +283,18 @@ public class DecodeTests {
         // CborVariantDecoder relies on mightAccept
         var dec = new CborVariantDecoder<Object>(List.of(CborPrim.MOST_DOUBLE, CborPrim.STRING));
         assertEquals(1.1, Cbor.decode(ByteBuffer.wrap(HexFormat.of().parseHex("fb3ff199999999999a")), dec));
+    }
+
+    @Test
+    public void decodeArgumentsAsUnsigned() {
+        var hex = HexFormat.of();
+        assertEquals(200, new CborDecoder(ByteBuffer.wrap(hex.parseHex("18c8"))).readUInt());
+        assertEquals(65535, new CborDecoder(ByteBuffer.wrap(hex.parseHex("19ffff"))).readUInt());
+        assertEquals(0xFFFFFFFFL, new CborDecoder(ByteBuffer.wrap(hex.parseHex("1affffffff"))).readUInt());
+        assertEquals(-201, new CborDecoder(ByteBuffer.wrap(hex.parseHex("38c8"))).readInt());
+        // text string of length 200
+        var s = Cbor.decode(ByteBuffer.wrap(hex.parseHex("78c8" + "61".repeat(200))), CborPrim.STRING);
+        assertEquals("a".repeat(200), s);
     }
 
     // TODO: test tagged decoder

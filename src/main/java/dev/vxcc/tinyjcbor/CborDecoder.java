@@ -105,9 +105,9 @@ public final class CborDecoder {
         tokenIndefiniteLength = false;
 
         switch (tokenAdditionalInfo) {
-            case 24: tokenArg = buffer.get(); break;
-            case 25: tokenArg = buffer.getShort(); break;
-            case 26: tokenArg = buffer.getInt(); break;
+            case 24: tokenArg = buffer.get() & 0xffL; break;
+            case 25: tokenArg = buffer.getShort() & 0xffffL; break;
+            case 26: tokenArg = buffer.getInt() & 0xffffffffL; break;
             case 27: tokenArg = buffer.getLong(); break;
             case 28:
             case 29:
