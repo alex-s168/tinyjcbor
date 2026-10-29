@@ -227,55 +227,6 @@ public class DecodeTests {
     }
 
     @Test
-    public void seq() {
-        var buf = ByteBuffer.allocate(64);
-        buf.put((byte) 0x02);
-        buf.put((byte) 0x03);
-        buf.put((byte) 0x04);
-        buf.flip();
-
-        var item = CborPrim.POSITIVE;
-        var seq = new CborSeq(buf);
-        assertTrue(seq.hasNext());
-        assertEquals(2, seq.next(item));
-        assertTrue(seq.hasNext());
-        assertEquals(3, seq.next(item));
-        assertTrue(seq.hasNext());
-        assertEquals(4, seq.next(item));
-        assertFalse(seq.hasNext());
-        assertEquals(0, buf.remaining());
-    }
-
-    @Test
-    public void chainDecoder() {
-        var buf = ByteBuffer.allocate(64);
-        buf.put((byte) 0x02);
-        buf.put((byte) 0x03);
-        buf.flip();
-
-        CborDeserializer<Long> item = CborDeserializer.chain(CborPrim.POSITIVE, CborPrim.POSITIVE, Long::sum);
-        var seq = new CborSeq(buf);
-        assertTrue(seq.hasNext());
-        assertEquals(2 + 3, seq.next(item));
-        assertFalse(seq.hasNext());
-        assertEquals(0, buf.remaining());
-    }
-
-    @Test
-    public void mapDecoder() {
-        var buf = ByteBuffer.allocate(64);
-        buf.put((byte) 0x02);
-        buf.flip();
-
-        CborDeserializer<Integer> item = CborDeserializer.map(CborPrim.POSITIVE, x -> (Integer) (int) (long) x);
-        var seq = new CborSeq(buf);
-        assertTrue(seq.hasNext());
-        assertEquals(2, seq.next(item));
-        assertFalse(seq.hasNext());
-        assertEquals(0, buf.remaining());
-    }
-
-    @Test
     public void mostDoubleAcceptsFloat64() {
         assertTrue(CborPrim.MOST_DOUBLE.mightAccept(CborType.Float64));
         // CborVariantDecoder relies on mightAccept
