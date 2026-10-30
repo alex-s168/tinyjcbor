@@ -569,7 +569,7 @@ public final class CborDecoder {
         if (tokenMajorType != 2)
             throw new UnexpectedCborException.UnexpectedType(CborType.ByteString.name(), currentTokenType());
         if (tokenIndefiniteLength) {
-            indefiniteByteArrayReader.init(2, CborType.ByteString.name());
+            indefiniteByteArrayReader.init(2);
             return indefiniteByteArrayReader;
         }
         finiteByteArrayReader.init(tokenArg);
@@ -609,7 +609,7 @@ public final class CborDecoder {
 
         ByteReader byteReader;
         if (tokenIndefiniteLength) {
-            indefiniteByteArrayReader.init(3, CborType.Text.name());
+            indefiniteByteArrayReader.init(3);
             byteReader = indefiniteByteArrayReader;
         } else {
             finiteByteArrayReader.init(tokenArg);
@@ -667,7 +667,7 @@ public final class CborDecoder {
             throw new UnexpectedCborException.UnexpectedType(CborType.Text.name(), currentTokenType());
 
         if (tokenIndefiniteLength) {
-            indefiniteByteArrayReader.init(3, CborType.Text.name());
+            indefiniteByteArrayReader.init(3);
             return indefiniteByteArrayReader;
         } else {
             finiteByteArrayReader.init(tokenArg);
@@ -873,7 +873,7 @@ public final class CborDecoder {
             if (!hasNext())
                 return 0;
             int read = length;
-            if (read > remaining)
+            if (Long.compareUnsigned(read & 0xffffffffL, remaining) > 0)
                 read = guessRemainingLength();
             remaining -= read;
             try {
@@ -886,8 +886,8 @@ public final class CborDecoder {
 
         @Override
         public int guessRemainingLength() {
-            if (remaining < 0 || remaining > Integer.MAX_VALUE)
-                return Integer.MAX_VALUE;
+            if (Long.compareUnsigned(remaining, 0xffffffffL) >= 0)
+                return 0xffffffff;
             return (int) remaining;
         }
     }
@@ -895,41 +895,51 @@ public final class CborDecoder {
     private final class IndefiniteByteReader extends ByteReader {
         private boolean _hasFinite;
         private int majorType;
-        @Nullable private String expectedName;
         private boolean _end = true;
 
-        public void init(int majorType, @Nullable String expectedName) {
+        public void init(int majorType) {
             _hasFinite = false;
             this.majorType = majorType;
-            this.expectedName = expectedName;
             this._end = false;
         }
 
-        private @Nullable CborDecoder.FiniteByteReader chunkReader() {
-            if (_end)
-                return null;
-            if (_hasFinite && finiteByteArrayReader.hasNext())
-                return finiteByteArrayReader;
-            _hasFinite = false;
+        private @Nullable CborDecoder.FiniteByteReader _chunkReader() {
+            try {
+                if (_end)
+                    return null;
+                if (_hasFinite && finiteByteArrayReader.hasNext())
+                    return finiteByteArrayReader;
+                _hasFinite = false;
 
-            if (peekTokenType() == CborType.Break) {
+                if (peekTokenType() == CborType.Break) {
+                    nextToken();
+                    _end = true;
+                    return null;
+                }
+
                 nextToken();
-                _end = true;
-                return null;
+
+                if (tokenMajorType != majorType || tokenIndefiniteLength)
+                    throw new InvalidCborException();
+                finiteByteArrayReader.init(tokenArg);
+                _hasFinite = true;
+                return finiteByteArrayReader;
+            } catch (NoSuchElementException ignored) {
+                throw new InvalidCborException();
             }
+        }
 
-            nextToken();
-
-            if (tokenMajorType != majorType || tokenIndefiniteLength)
-                throw new UnexpectedCborException.UnexpectedType(expectedName, currentTokenType());
-            finiteByteArrayReader.init(tokenArg);
-            _hasFinite = true;
-            return finiteByteArrayReader;
+        private @Nullable CborDecoder.FiniteByteReader nextNonEmptyChunkReader() {
+            var reader = _chunkReader();
+            while (reader != null && !reader.hasNext()) {
+                reader = _chunkReader();
+            }
+            return reader;
         }
 
         @Override
         public byte nextByte() {
-            var chunk = chunkReader();
+            var chunk = nextNonEmptyChunkReader();
             if (chunk == null)
                 throw new NoSuchElementException();
             return chunk.nextByte();
@@ -937,7 +947,7 @@ public final class CborDecoder {
 
         @Override
         public int next(byte[] dst, int offset, int length) {
-            var chunk = chunkReader();
+            var chunk = nextNonEmptyChunkReader();
             if (chunk == null)
                 return 0;
             return chunk.next(dst, offset, length);
@@ -945,7 +955,7 @@ public final class CborDecoder {
 
         @Override
         public boolean hasNext() {
-            return chunkReader() != null;
+            return nextNonEmptyChunkReader() != null;
         }
     }
 

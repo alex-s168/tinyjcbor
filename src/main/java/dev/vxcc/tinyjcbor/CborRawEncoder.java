@@ -101,7 +101,7 @@ public final class CborRawEncoder {
     }
 
     public void writeSimple(byte x) throws IOException {
-        if (x < 24) {
+        if (Long.compareUnsigned(x, 24) < 0) {
             writeTokenHeader(7, x);
         } else {
             writeTokenHeader(7, 24);

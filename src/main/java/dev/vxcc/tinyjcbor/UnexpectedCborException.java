@@ -20,32 +20,6 @@ public abstract class UnexpectedCborException extends RuntimeException {
         }
     }
 
-    public static class NotMemberOfEnum extends UnexpectedCborException {
-        @NotNull public final String got;
-
-        public NotMemberOfEnum(@NotNull String got) {
-            this.got = got;
-        }
-
-        @Override
-        public String toString() {
-            return "'" + got + "' is not a member of the expected enum!";
-        }
-    }
-
-    public static class MissingMapField extends UnexpectedCborException {
-        @NotNull public final String field;
-
-        public MissingMapField(@NotNull String field) {
-            this.field = field;
-        }
-
-        @Override
-        public String toString() {
-            return "Required field not found in CBOR map: '" + field + "'!";
-        }
-    }
-
     public static class WrongTag extends UnexpectedCborException {
         @Nullable public final Long expected;
         public final long got;
@@ -83,7 +57,6 @@ public abstract class UnexpectedCborException extends RuntimeException {
             return "Expect array to end after " + expectedLength + " elements! (Too many elements)";
         }
     }
-
 
     public static class UnexpectedEndOfArray extends UnexpectedCborException {
         public final long gotLength;

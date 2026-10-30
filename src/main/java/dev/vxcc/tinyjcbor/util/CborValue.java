@@ -156,7 +156,7 @@ public sealed abstract class CborValue {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof Float32 u)
-                return value == u.value;
+                return Float.compare(value, u.value) == 0;
             return false;
         }
 
@@ -186,7 +186,7 @@ public sealed abstract class CborValue {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof Float64 u)
-                return value == u.value;
+                return Double.compare(value, u.value) == 0;
             return false;
         }
 
@@ -473,41 +473,62 @@ public sealed abstract class CborValue {
                 case NegativeInteger -> new Negative(decoder.readNegativeInt());
                 case SimpleValue -> new Simple(decoder.readSimple());
                 case False, True -> new Bool(decoder.readBool());
-                case Null -> Null.VALUE;
-                case Undefined -> Undefined.VALUE;
+                case Null -> {
+                    decoder.readNull();
+                    yield Null.VALUE;
+                }
+                case Undefined -> {
+                    decoder.readUndefined();
+                    yield Undefined.VALUE;
+                }
                 case Float16 -> new Float16(decoder.readFloat16());
                 case Float32 -> new Float32(decoder.readFloat32());
                 case Float64 -> new Float64(decoder.readFloat64());
                 case ByteString -> new Bytes(decoder.read(CborPrim.BYTES));
                 case Text -> new Str(decoder.read(CborPrim.STRING));
                 case Tag -> {
-                    var tag = decoder.readTag();
-                    yield new Tag(tag, next(decoder));
+                    try {
+                        var tag = decoder.readTag();
+                        yield new Tag(tag, next(decoder));
+                    } catch (NoSuchElementException ignored) {
+                        // when no next item found
+                        throw new InvalidCborException();
+                    }
                 }
                 case Array -> {
-                    var out = new ArrayList<CborValue>();
-                    var arr = decoder.readArrayManual();
-                    while (arr.hasNext()) {
-                        arr.next();
-                        out.add(next(decoder));
+                    try {
+                        var out = new ArrayList<CborValue>();
+                        var arr = decoder.readArrayManual();
+                        while (arr.hasNext()) {
+                            arr.next();
+                            out.add(next(decoder));
+                        }
+                        arr.end();
+                        yield new Arr(out);
+                    } catch (NoSuchElementException ignored) {
+                        // when eg not enough array items
+                        throw new InvalidCborException();
                     }
-                    arr.end();
-                    yield new Arr(out);
                 }
                 case Map -> {
-                    var out = new LinkedHashMap<CborValue, CborValue>();
-                    var map = decoder.readMapManual();
-                    while (map.hasNext()) {
-                        map.next();
-                        var k = next(decoder);
-                        var v = next(decoder);
-                        out.put(k, v);
+                    try {
+                        var out = new LinkedHashMap<CborValue, CborValue>();
+                        var map = decoder.readMapManual();
+                        while (map.hasNext()) {
+                            map.next();
+                            var k = next(decoder);
+                            var v = next(decoder);
+                            out.put(k, v);
+                        }
+                        map.end();
+                        yield new Dict(out);
+                    } catch (NoSuchElementException ignored) {
+                        // when eg not enough array items
+                        throw new InvalidCborException();
                     }
-                    map.end();
-                    yield new Dict(out);
                 }
-                case Break -> throw new UnexpectedCborException.Custom("expected value");
-                case null -> throw new UnexpectedCborException.Custom("expected value");
+                case Break -> throw new InvalidCborException();
+                case null -> throw new NoSuchElementException();
             };
         }
 
